@@ -25,7 +25,7 @@ public class CSVLogger : MonoBehaviour
     private float _timer;
     private bool _initialized;
 
-    public GameObject eyeGaze;
+    public RectTransform eyeGaze;
     public GameObject headPosition;
 
     private float zoomIn;
@@ -40,13 +40,16 @@ public class CSVLogger : MonoBehaviour
     [Header("RX-Ray Image Reference")]
     public GameObject imagesContainer;
 
-    //private float xminShownImage;
-    //private float yminShownImage;
-    //private float xmaxShownImage;
-    //private float ymaxShownImage;
+    private float xminShownImage;
+    private float yminShownImage;
+    private float xmaxShownImage;
+    private float ymaxShownImage;
 
-    //private float eyeGazeX;
-    //private float eyeGazeY;
+    private float eyeGazeX;
+    private float eyeGazeY;
+
+    private float normalizationEyeGazeX;
+    private float normalizationEyeGazeY;
 
 
 
@@ -62,8 +65,9 @@ public class CSVLogger : MonoBehaviour
 
         InitializeCSV();
         calibrationReset = headPosition.transform.position.z;
-        //xminShownImage = 0;
-        //yminShownImage = 0;
+
+        eyeGazeX = eyeGaze.position.x;
+        eyeGazeY = eyeGaze.position.y;
     }
 
     // Update is called once per frame
@@ -105,7 +109,7 @@ public class CSVLogger : MonoBehaviour
 
         // Write header row
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName,ZoomIn,ZoomOut,HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX,EyeGazeY");
+        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName,ZoomIn,ZoomOut,HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
         File.WriteAllText(_filePath, sb.ToString(), Encoding.UTF8);
 
         _initialized = true;
@@ -129,6 +133,9 @@ public class CSVLogger : MonoBehaviour
             float headPosY = headPosition.transform.position.y;
             float headPosZ = headPosition.transform.position.z;
 
+            eyeGazeX = eyeGaze.position.x;
+            eyeGazeY = eyeGaze.position.y;
+
             //Zoom
             if (headPosZ > calibrationReset)
             {
@@ -141,9 +148,9 @@ public class CSVLogger : MonoBehaviour
                 zoomIn = 0;
             }
 
-            if (activeImage != "None")
+            if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1)
             {
-                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{rt.position.x},{rt.position.x}";
+                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
                 File.AppendAllText(_filePath, line + Environment.NewLine, Encoding.UTF8);
             }
                 
@@ -160,6 +167,21 @@ public class CSVLogger : MonoBehaviour
             if (child.gameObject.activeSelf)
             {
                 //x min, y min, x max and y max of the image
+                // Get sprite renderer from the active child
+                SpriteRenderer ActiveImage = child.gameObject.GetComponent<SpriteRenderer>();
+
+                if (ActiveImage != null)
+                {
+                    Bounds bounds = ActiveImage.bounds;
+
+                    xminShownImage = bounds.min.x;
+                    yminShownImage = bounds.min.y;
+                    xmaxShownImage = bounds.max.x;
+                    ymaxShownImage = bounds.max.y;
+                }
+                normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
+                normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
+
                 // recalculate the eye gaze circle
                 //EyeGazeToPixelCoordinates(child);
                 return child.gameObject.name;
