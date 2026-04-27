@@ -2817,7 +2817,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 396793600}
-  - component: {fileID: 396793599}
+  - component: {fileID: 396793601}
   m_Layer: 0
   m_Name: Speech Manager
   m_TagString: Untagged
@@ -2825,23 +2825,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &396793599
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 396793598}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a6087ace9fd29b41b18c886cbdacdb6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpeechRecognitionTest
-  RXImages: {fileID: 1416681906}
-  TrialResults: {fileID: 298766767}
-  hfApiKey: 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
-  chunkDurationSeconds: 10
-  _recordingFrequency: 16000
 --- !u!4 &396793600
 Transform:
   m_ObjectHideFlags: 0
@@ -2857,6 +2840,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &396793601
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 396793598}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfa83a207975f214d88262a50d96d46e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeechRecognitionTest
+  RXImages: {fileID: 1416681906}
+  TrialResults: {fileID: 298766767}
+  trialManager: {fileID: 1770379697}
+  hfApiKey: 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
+  chunkDurationSeconds: 10
+  _recordingFrequency: 16000
 --- !u!1 &399178898
 GameObject:
   m_ObjectHideFlags: 0

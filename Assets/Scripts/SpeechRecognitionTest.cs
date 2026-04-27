@@ -3,11 +3,13 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 
+
 public class SpeechRecognitionTest : MonoBehaviour
 {
     [Header("GameObject Triggers")]
     public GameObject RXImages;        // Start when this is active
     public GameObject TrialResults;    // Stop when this is active
+    public CSVLogger trialManager;
 
     [Header("Hugging Face")]
     [SerializeField] private string hfApiKey = "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";
@@ -62,9 +64,8 @@ public class SpeechRecognitionTest : MonoBehaviour
         string folder = Path.Combine(projectRoot, "AudioRecording");
         Directory.CreateDirectory(folder);
 
-        // Generating a timestamp name since trialID isn't passed via events anymore
         string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        savePath = Path.Combine(folder, $"Recording_{timestamp}.wav");
+        savePath = Path.Combine(folder, $"User{trialManager.userID}_{timestamp}.wav");
 
         Debug.Log($"[SpeechRecognition] Triggered Start — Saving to: {savePath}");
         StartRecording();
