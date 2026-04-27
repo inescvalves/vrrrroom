@@ -2307,7 +2307,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &298766768
 Transform:
   m_ObjectHideFlags: 0
@@ -2808,6 +2808,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 367035028}
   m_CullTransparentMesh: 1
+--- !u!1 &396793598
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 396793600}
+  - component: {fileID: 396793599}
+  m_Layer: 0
+  m_Name: Speech Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &396793599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 396793598}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a6087ace9fd29b41b18c886cbdacdb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeechRecognitionTest
+  RXImages: {fileID: 1416681906}
+  TrialResults: {fileID: 298766767}
+  hfApiKey: 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
+  chunkDurationSeconds: 10
+  _recordingFrequency: 16000
+--- !u!4 &396793600
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 396793598}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &399178898
 GameObject:
   m_ObjectHideFlags: 0
@@ -4602,7 +4651,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 780, y: 0}
+  m_SizeDelta: {x: 780, y: 232}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!225 &900318817
 CanvasGroup:
@@ -5446,7 +5495,7 @@ MonoBehaviour:
   minLuminance: 0
   maxLuminance: 1
   defaultLuminance: 0.5
-  minContrast: 0.000015
+  minContrast: 0.1
   maxContrast: 2
   defaultContrast: 1
   clickThreshold: 0.2
@@ -7332,7 +7381,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1416681910
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9961,10 +10010,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 900318816}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 390, y: -156}
+  m_SizeDelta: {x: 780, y: 60}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1767253875
 MonoBehaviour:
@@ -10689,10 +10738,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 900318816}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 390, y: -16}
+  m_SizeDelta: {x: 780, y: 140}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1841795636
 MonoBehaviour:
@@ -12572,7 +12621,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2135291232
 Transform:
   m_ObjectHideFlags: 0
@@ -12682,3 +12731,4 @@ SceneRoots:
   - {fileID: 399178900}
   - {fileID: 1770379698}
   - {fileID: 1052836415}
+  - {fileID: 396793600}

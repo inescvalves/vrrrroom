@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.huggingface.api": "https://github.com/huggingface/unity-api.git",
     "com.meta.xr.sdk.all": "201.0.0",
     "com.meta.xr.sdk.core": "201.0.0",
     "com.unity.2d.sprite": "1.0.0",
