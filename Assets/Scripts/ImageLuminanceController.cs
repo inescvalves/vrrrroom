@@ -207,7 +207,6 @@ public class ImageLuminanceController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (_activeMaterial != null)
-            Destroy(_activeMaterial);
+        if (_activeMaterial != null) Destroy(_activeMaterial);
     }
 }

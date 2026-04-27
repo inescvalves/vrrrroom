@@ -309,7 +309,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 34795515}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -918,7 +918,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: Lean <color="orange">backwards</color> as far as you comfortably can and
-    press the spacebar
+    press the right button
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
   m_sharedMaterial: {fileID: -2519797269173429552, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
@@ -945,7 +945,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 34.15
+  m_fontSize: 32.4
   m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1055,7 +1055,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: When you are ready, press spacebar to calibrate your range of motion
+  m_text: When you are ready, press right to calibrate your range of motion
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
   m_sharedMaterial: {fileID: -2519797269173429552, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
@@ -1903,7 +1903,7 @@ MonoBehaviour:
 
 
     <align=center>Press
-    the spacebar to begin.</align></size>
+    the right button to begin.</align></size>
 
 '
   m_isRightToLeft: 0
@@ -2307,7 +2307,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &298766768
 Transform:
   m_ObjectHideFlags: 0
@@ -2573,7 +2573,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.014419, y: 0.014419, z: 0.014419}
+  m_LocalScale: {x: 0.02, y: 0.02, z: 0.02}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1240264000}
@@ -4602,7 +4602,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 780, y: 232}
+  m_SizeDelta: {x: 780, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!225 &900318817
 CanvasGroup:
@@ -4676,7 +4676,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 900318815}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -5406,32 +5406,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1052836415}
-  - component: {fileID: 1052836414}
+  - component: {fileID: 1052836416}
   m_Layer: 0
-  m_Name: Luminance Controller
+  m_Name: Image Effects Controller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1052836414
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1052836413}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f0dc1348a50fcd4db72247c45703311, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ImageLuminanceController
-  rxRayImageRoot: {fileID: 1240264000}
-  mouseSensitivity: 0.01
-  minLuminance: 0
-  maxLuminance: 1
-  defaultLuminance: 0.5
-  clickThreshold: 0.2
 --- !u!4 &1052836415
 Transform:
   m_ObjectHideFlags: 0
@@ -5447,6 +5429,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1052836416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1052836413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0f7f1cea7fab446a6370c517624252, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImageEffetcsController
+  rxRayImageRoot: {fileID: 1240264000}
+  mouseSensitivity: 0.01
+  minLuminance: 0
+  maxLuminance: 1
+  defaultLuminance: 0.5
+  minContrast: 0.000015
+  maxContrast: 2
+  defaultContrast: 1
+  clickThreshold: 0.2
 --- !u!1 &1062865807
 GameObject:
   m_ObjectHideFlags: 0
@@ -5604,7 +5607,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1067267864}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -7062,7 +7065,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Parallel
+  m_text: Static
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: c3004d14254853c49a83e1eda29352c7, type: 2}
   m_sharedMaterial: {fileID: -5578958367321862009, guid: c3004d14254853c49a83e1eda29352c7, type: 2}
@@ -8877,7 +8880,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1602614843}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 24}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 67.74273, y: 67.74273, z: 67.74273}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9958,10 +9961,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 900318816}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 390, y: -156}
-  m_SizeDelta: {x: 780, y: 60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1767253875
 MonoBehaviour:
@@ -10120,7 +10123,7 @@ MonoBehaviour:
   imagesRxRayParent: {fileID: 1416681906}
   pause: {fileID: 1554872934}
   imagesContainer: {fileID: 1240263999}
-  luminanceController: {fileID: 1052836414}
+  imageEffectsController: {fileID: 1052836416}
 --- !u!4 &1770379698
 Transform:
   m_ObjectHideFlags: 0
@@ -10686,10 +10689,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 900318816}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 390, y: -16}
-  m_SizeDelta: {x: 780, y: 140}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1841795636
 MonoBehaviour:
@@ -10941,7 +10944,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: Lean <color="yellow">forwards</color> as far as you comfortably can and
-    press the spacebar
+    press the right button
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
   m_sharedMaterial: {fileID: -2519797269173429552, guid: a8c7096749156c2498d43226d6e9d7b0, type: 2}
@@ -10968,7 +10971,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 34.15
+  m_fontSize: 33.9
   m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -12442,8 +12445,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 25.4418, y: 30.560001, z: 0.8712968}
-  m_Center: {x: 0, y: 0, z: -0.16901627}
+  m_Size: {x: 25.4418, y: 30.560001, z: 0.2}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2091210991
 GameObject:
   m_ObjectHideFlags: 0
@@ -12569,7 +12572,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2135291232
 Transform:
   m_ObjectHideFlags: 0

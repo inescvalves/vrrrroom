@@ -51,7 +51,7 @@ public class CSVLogger : MonoBehaviour
     private float normalizationEyeGazeX;
     private float normalizationEyeGazeY;
 
-    [SerializeField] private ImageLuminanceController luminanceController;
+    [SerializeField] private ImageEffectsController imageEffectsController;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -110,7 +110,7 @@ public class CSVLogger : MonoBehaviour
 
         // Write header row
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, WindowLevel, ZoomIn,ZoomOut,HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
+        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, WindowLevel, WindowWidth, ZoomIn, ZoomOut, HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
         File.WriteAllText(_filePath, sb.ToString(), Encoding.UTF8);
 
         _initialized = true;
@@ -149,11 +149,12 @@ public class CSVLogger : MonoBehaviour
                 zoomIn = 0;
             }
 
-            float windowLevel = luminanceController.GetWindowLevel();
+            float windowLevel = imageEffectsController.GetWindowLevel();
+            float windowWidth = imageEffectsController.GetWindowWidth();
 
             if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1)
             {
-                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
+                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel},{windowWidth},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
                 File.AppendAllText(_filePath, line + Environment.NewLine, Encoding.UTF8);
             }
 
