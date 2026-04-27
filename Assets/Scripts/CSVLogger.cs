@@ -51,6 +51,7 @@ public class CSVLogger : MonoBehaviour
     private float normalizationEyeGazeX;
     private float normalizationEyeGazeY;
 
+    [SerializeField] private ImageLuminanceController luminanceController;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -109,7 +110,7 @@ public class CSVLogger : MonoBehaviour
 
         // Write header row
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName,ZoomIn,ZoomOut,HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
+        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, WindowLevel, ZoomIn,ZoomOut,HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
         File.WriteAllText(_filePath, sb.ToString(), Encoding.UTF8);
 
         _initialized = true;
@@ -148,12 +149,15 @@ public class CSVLogger : MonoBehaviour
                 zoomIn = 0;
             }
 
+            float windowLevel = luminanceController.GetWindowLevel();
+
             if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1)
             {
-                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
+                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
                 File.AppendAllText(_filePath, line + Environment.NewLine, Encoding.UTF8);
             }
-                
+
+
         }
     
     }
@@ -182,8 +186,6 @@ public class CSVLogger : MonoBehaviour
                 normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
                 normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
 
-                // recalculate the eye gaze circle
-                //EyeGazeToPixelCoordinates(child);
                 return child.gameObject.name;
             }
            
@@ -191,23 +193,6 @@ public class CSVLogger : MonoBehaviour
 
         return "None";
     }
-
-    //private string EyeGazeToPixelCoordinates(GameObject child)
-    //{
-    //    SpriteRenderer sr = child.GetComponent<SpriteRenderer>();
-
-    //    xmaxShownImage = sr.sprite.rect.width;
-    //    ymaxShownImage = sr.sprite.rect.height;
-
-    //    // Convert Circle world position → local position relative to image
-    //    RectTransform rt = eyeGaze.GetComponent<RectTransform>();
-
-    //    eyeGazeX = xmaxShownImage / 2f + rt.position.x;
-    //    eyeGazeY = ymaxShownImage / 2f + rt.position.y;
-
-    //    return null;
-    //}
-    
 
     // ──────────────────────────────────────────────────────────────────────
     // Call this from another script (e.g. a button) to flush and close gracefully.
