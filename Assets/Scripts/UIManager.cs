@@ -25,6 +25,8 @@ public class UIManager : MonoBehaviour
     public float fadeDuration = 0.4f;
     public int imagesBetweenPause = 3; // Pause every N images
 
+    public bool pauseBetweenModalities;
+
     private GameObject[] panels;
     private int currentIndex = 0;
     private bool isTransitioning = false;
@@ -177,7 +179,7 @@ public class UIManager : MonoBehaviour
         }
 
         // Every N images → show pause screen
-        if (imagesShownSinceLastPause >= imagesBetweenPause)
+        if (imagesShownSinceLastPause >= imagesBetweenPause && pauseBetweenModalities == true)
         {
             Debug.Log($"RX-Ray: {imagesBetweenPause} images shown, pausing.");
             isOnRxRayScreen = false;

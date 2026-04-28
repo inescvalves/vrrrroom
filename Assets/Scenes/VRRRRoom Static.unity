@@ -2898,7 +2898,7 @@ MonoBehaviour:
   rxRayImagesParent: {fileID: 1240264000}
   fadeDuration: 0.4
   imagesBetweenPause: 3
-  pauseBetweenModalities: 1
+  pauseBetweenModalities: 0
 --- !u!4 &399178900
 Transform:
   m_ObjectHideFlags: 0
