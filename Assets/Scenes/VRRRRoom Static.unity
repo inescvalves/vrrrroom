@@ -10429,8 +10429,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca616f123259e5847ba689793b336185, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CSVLogger
-  userID: 1
-  logInterval: 0.1
+  userID: 2
+  logInterval: 0.01
   logEveryFrame: 0
   eyeGaze: {fileID: 1966096044}
   headPosition: {fileID: 1657939668}

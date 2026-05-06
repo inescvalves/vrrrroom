@@ -16,7 +16,7 @@ public class CSVLogger : MonoBehaviour
 
     [Header("Logging Settings")]
     [Tooltip("How many times per second positions are recorded.")]
-    public float logInterval;   // 10 Hz default
+    public float logInterval;   // 100 Hz
 
     [Tooltip("Log on every Update instead of on a timer.")]
     public bool logEveryFrame = false;
@@ -51,8 +51,13 @@ public class CSVLogger : MonoBehaviour
     private float normalizationEyeGazeX;
     private float normalizationEyeGazeY;
 
+    private float normalizationCorrectedEyeGazeX;
+    private float normalizationCorrectedEyeGazeY;
+
     [SerializeField] private ImageEffectsController imageEffectsController;
 
+
+    private (float,float) delta;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -69,6 +74,8 @@ public class CSVLogger : MonoBehaviour
 
         eyeGazeX = eyeGaze.position.x;
         eyeGazeY = eyeGaze.position.y;
+
+        delta = FindFirstObjectByType<EyeCalibration>().GetDelta();
     }
 
     // Update is called once per frame
@@ -110,7 +117,11 @@ public class CSVLogger : MonoBehaviour
 
         // Write header row
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, WindowLevel, WindowWidth, ZoomIn, ZoomOut, HeadGazeZ, HeadGazeY, HeadGazeZ, EyeGazeX (normalization), EyeGazeY (normalization)");
+        sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, " +
+            "WindowLevel, WindowWidth, ZoomIn, ZoomOut," +
+            " HeadGazeZ, HeadGazeY, HeadGazeZ," +
+            " EyeGazeX (normalized), EyeGazeY (normalized)," +
+            " EyeGazeX (corrected), EyeGazeY (corrected)");
         File.WriteAllText(_filePath, sb.ToString(), Encoding.UTF8);
 
         _initialized = true;
@@ -154,7 +165,10 @@ public class CSVLogger : MonoBehaviour
 
             if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1)
             {
-                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel},{windowWidth},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ},{normalizationEyeGazeX},{normalizationEyeGazeY}";
+                string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel}," +
+                    $"{windowWidth},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ}," +
+                    $"{normalizationEyeGazeX},{normalizationEyeGazeY}," +
+                    $"{normalizationCorrectedEyeGazeX},{normalizationCorrectedEyeGazeY}";
                 File.AppendAllText(_filePath, line + Environment.NewLine, Encoding.UTF8);
             }
 
@@ -186,6 +200,12 @@ public class CSVLogger : MonoBehaviour
                 }
                 normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
                 normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
+
+                normalizationCorrectedEyeGazeX = normalizationEyeGazeX - delta.Item1;
+                normalizationCorrectedEyeGazeY = normalizationEyeGazeY - delta.Item2;
+
+                //normalizationCorrectedEyeGazeX = Math.Clamp(normalizationCorrectedEyeGazeX, 0, 1);
+                //normalizationCorrectedEyeGazeY = Math.Clamp(normalizationCorrectedEyeGazeY, 0, 1);
 
                 return child.gameObject.name;
             }

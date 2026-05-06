@@ -1,7 +1,9 @@
+using Oculus.Interaction.Samples;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
@@ -40,6 +42,8 @@ public class UIManager : MonoBehaviour
     private bool isOnRxRayScreen = false;
     private bool isOnPauseScreen = false;
     private int imagesShownSinceLastPause = 0;
+
+
 
     // -------------------------------------------------------
     // Lifecycle
@@ -186,13 +190,18 @@ public class UIManager : MonoBehaviour
         // All images shown → go to Trial Results
         if (currentImageIndex >= shuffledImages.Count)
         {
+            FindFirstObjectByType<EyeCalibration>().EndCalibration();
             Debug.Log("RX-Ray: All images shown. Going to Trial Results.");
             isOnRxRayScreen = false;
             int trialResultsIndex = System.Array.IndexOf(panels, trialResultsScreenCanvas);
             StartCoroutine(FadeTransition(rxRayImageCanvas, trialResultsScreenCanvas, false));
             currentIndex = trialResultsIndex;
             isTransitioning = false;
-            yield break; // ← aqui
+            while (!Mouse.current.rightButton.wasPressedThisFrame)
+                yield return null;
+            if (SceneManager.GetActiveScene().name != "VRRRRoom Static")
+                SceneManager.LoadScene("VRRRRoom Static");
+            yield break;
         }
 
         // Every N images → show pause screen
@@ -203,7 +212,7 @@ public class UIManager : MonoBehaviour
             isOnPauseScreen = true;
             StartCoroutine(FadeTransition(rxRayImageCanvas, pauseBeforeChangingAnchorsCanvas, false));
             isTransitioning = false;
-            yield break; // ← e aqui
+            yield break;
         }
 
         // Fade IN next image

@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 
-public class CircleCalibration : MonoBehaviour
+public class EyeCalibration : MonoBehaviour
 {
     [Header("Canvas & Area")]
     public RectTransform calibrationArea;
@@ -44,6 +44,9 @@ public class CircleCalibration : MonoBehaviour
     [Tooltip("Folder name created at the root of your Unity project (next to Assets/).")]
     public string outputFolderName = "CalibrationData";
 
+    [Header("RX-Ray Image Reference")]
+    public GameObject imagesContainer;
+
     // ── Internal state ─────────────────────────────────────────────────────────
     private RectTransform[] blueRects = new RectTransform[4];
     private GameObject[] blueObjects = new GameObject[4];
@@ -74,10 +77,20 @@ public class CircleCalibration : MonoBehaviour
 
     private bool isInitialized = false;
 
+    private float xminShownImage;
+    private float yminShownImage;
+    private float xmaxShownImage;
+    private float ymaxShownImage;
+
     // ── Unity lifecycle ────────────────────────────────────────────────────────
+
+
+    private (float, float) delta;
+
 
     void Start()
     {
+        DontDestroyOnLoad(gameObject);
         ValidateReferences();
         resolvedUserID = ResolveUserID();
         EnsureOutputFolder();
@@ -94,6 +107,10 @@ public class CircleCalibration : MonoBehaviour
         StartCoroutine(SpawnAfterLayout());
     }
 
+    public (float,float) GetDelta()
+    {
+        return delta;
+    }
     IEnumerator SpawnAfterLayout()
     {
         yield return null; // wait one frame for Canvas layout
@@ -140,18 +157,18 @@ public class CircleCalibration : MonoBehaviour
                 if (borderT >= 1f) borderT -= 1f;
 
                 // Move the circle
-                fifthRect.anchoredPosition = BorderPosition(borderT, w, h, margin);
+                //fifthRect.anchoredPosition = BorderPosition(borderT, w, h, margin);
             }
 
             // End logic
-            if (borderDuration > 0f)
-            {
-                borderTimer += Time.deltaTime;
-                if (borderTimer >= borderDuration) EndCalibration();
-            }
+            //if (borderDuration > 0f)
+            //{
+            //    borderTimer += Time.deltaTime;
+            //    if (borderTimer >= borderDuration) EndCalibration();
+            //}
 
-            if (Mouse.current.leftButton.wasPressedThisFrame) OnBorderClick();
-            return;
+            //if (Mouse.current.leftButton.wasPressedThisFrame) EndCalibration();
+            //return;
         }
 
         // ── Drift the active blue circle ───────────────────────────────────────
@@ -219,7 +236,7 @@ public class CircleCalibration : MonoBehaviour
         // Safety check
         if (w == 0 || h == 0)
         {
-            Debug.LogError("[CircleCalibration] calibrationArea has zero size! Check Canvas layout.");
+            Debug.LogError("[EyeCalibration] calibrationArea has zero size! Check Canvas layout.");
             return new Vector2[4];
         }
 
@@ -274,36 +291,25 @@ public class CircleCalibration : MonoBehaviour
         //}
         //blueRects[nearestIdx].gameObject.SetActive(true);
 
-        float deltaX = redPos.x - bluePos.x;
-        float deltaY = redPos.y - bluePos.y;
-        float absX = Mathf.Abs(deltaX);
-        float absY = Mathf.Abs(deltaY);
-        float euclidean = Vector2.Distance(redPos, bluePos);
+        delta.Item1 += (redPos.x - bluePos.x)/4.0f;
+        delta.Item2 += (redPos.y - bluePos.y)/4.0f;
 
         string quadrant = QuadrantNames[nearestIdx];
 
-        csvRows.Add($"{quadrant}," +
-                    $"{bluePos.x:F4},{bluePos.y:F4}," +
-                    $"{redPos.x:F4},{redPos.y:F4}," +
-                    $"{deltaX:F4},{deltaY:F4}," +
-                    $"{absX:F4},{absY:F4}," +
-                    $"{euclidean:F4}");
-
-        Debug.Log($"[Calibration] {quadrant} | " +
-                  $"Blue({bluePos.x:F2},{bluePos.y:F2}) " +
-                  $"Red({redPos.x:F2},{redPos.y:F2}) | " +
-                  $"Δ({deltaX:F2},{deltaY:F2}) " +
-                  $"Abs({absX:F2},{absY:F2}) " +
-                  $"Dist={euclidean:F2}");
+        
 
         blueObjects[nearestIdx].SetActive(false);
         savedCount++;
 
         if (savedCount >= 4)
         {
+            EndCalibration();
+            GetActiveImageName();
+            csvRows.Add($"{delta.Item1:F4},{delta.Item2:F4}");
+
+            Debug.Log($"Δ({delta.Item1:F2},{delta.Item2:F2})");
             WriteCSV();
-            // Don't set finished yet — launch the border phase
-            StartBorderPhase();
+            
         }
         else
         {
@@ -315,6 +321,39 @@ public class CircleCalibration : MonoBehaviour
             UpdateStatus($"Look at the next blue circle. ({savedCount}/4)");
         }
     }
+
+    public string GetActiveImageName()
+    {
+        if (imagesContainer == null) return "None";
+
+        foreach (Transform child in imagesContainer.gameObject.transform)
+        {
+            if (child.gameObject.activeSelf)
+            {
+                //x min, y min, x max and y max of the image
+                // Get sprite renderer from the active child
+                SpriteRenderer ActiveImage = child.gameObject.GetComponent<SpriteRenderer>();
+
+                if (ActiveImage != null)
+                {
+                    Bounds bounds = ActiveImage.bounds;
+
+                    xminShownImage = bounds.min.x;
+                    yminShownImage = bounds.min.y;
+                    xmaxShownImage = bounds.max.x;
+                    ymaxShownImage = bounds.max.y;
+                }
+                delta.Item1 = Mathf.Abs(delta.Item1 - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
+                delta.Item2 = Mathf.Abs(delta.Item2 - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
+
+                return child.gameObject.name;
+            }
+
+        }
+
+        return "None";
+    }
+
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -347,73 +386,71 @@ public class CircleCalibration : MonoBehaviour
 
     // ── Fifth circle – border phase ────────────────────────────────────────────
 
-    void StartBorderPhase()
-    {
-        borderPhase = true;
-        borderT = 0f;
-        borderTimer = 0f;
+    //void StartBorderPhase()
+    //{
+    //    borderPhase = true;
+    //    borderT = 0f;
+    //    borderTimer = 0f;
 
-        // 1. Instantiate the circle
-        fifthObject = Instantiate(blueCirclePrefab, calibrationArea);
-        fifthObject.name = "BorderCircle";
+    //    // 1. Instantiate the circle
+    //    fifthObject = Instantiate(blueCirclePrefab, calibrationArea);
+    //    fifthObject.name = "BorderCircle";
 
-        // 2. Fix the "Invisible/Behind" issue
-        fifthObject.transform.SetAsLastSibling();
+    //    // 2. Fix the "Invisible/Behind" issue
+    //    fifthObject.transform.SetAsLastSibling();
 
-        // 3. Fix the "Big Circle" issue (Reset Scale & Size)
-        fifthRect = fifthObject.GetComponent<RectTransform>();
-        fifthRect.sizeDelta = new Vector2(blueCircleRadius * 2f, blueCircleRadius * 2f);
+    //    // 3. Fix the "Big Circle" issue (Reset Scale & Size)
+    //    fifthRect = fifthObject.GetComponent<RectTransform>();
+    //    fifthRect.sizeDelta = new Vector2(blueCircleRadius * 2f, blueCircleRadius * 2f);
 
-        // 4. Align Anchors and Pivot for movement math
-        fifthRect.anchorMin = new Vector2(0.5f, 0.5f);
-        fifthRect.anchorMax = new Vector2(0.5f, 0.5f);
-        fifthRect.pivot = new Vector2(0.5f, 0.5f);
+    //    // 4. Align Anchors and Pivot for movement math
+    //    fifthRect.anchorMin = new Vector2(0.5f, 0.5f);
+    //    fifthRect.anchorMax = new Vector2(0.5f, 0.5f);
+    //    fifthRect.pivot = new Vector2(0.5f, 0.5f);
 
-        if (redRect != null) redRect.SetAsLastSibling();
+    //    if (redRect != null) redRect.SetAsLastSibling();
 
-        UpdateStatus("Follow the moving circle...");
-    }
+    //    //UpdateStatus("Follow the moving circle...");
+    //}
 
     // Maps t ∈ [0,1) to a position on the rectangular border (clockwise, starting top-left).
-    Vector2 BorderPosition(float t, float w, float h, float margin)
+    //Vector2 BorderPosition(float t, float w, float h, float margin)
+    //{
+    //    float left = -w * 0.5f + margin;
+    //    float right = w * 0.5f - margin;
+    //    float top = h * 0.5f - margin;
+    //    float bottom = -h * 0.5f + margin;
+
+    //    float segTop = (right - left);           // top edge length
+    //    float segRight = (top - bottom);           // right edge length
+    //    float segBottom = (right - left);           // bottom edge length
+    //    float segLeft = (top - bottom);           // left edge length
+    //    float perimeter = segTop + segRight + segBottom + segLeft;
+
+    //    float dist = t * perimeter;
+
+    //    if (dist < segTop)                          // top: left → right
+    //        return new Vector2(left + dist, top);
+
+    //    dist -= segTop;
+    //    if (dist < segRight)                        // right: top → bottom
+    //        return new Vector2(right, top - dist);
+
+    //    dist -= segRight;
+    //    if (dist < segBottom)                       // bottom: right → left
+    //        return new Vector2(right - dist, bottom);
+
+    //    dist -= segBottom;                          // left: bottom → top
+    //    return new Vector2(left, bottom + dist);
+    //}
+
+    //void OnBorderClick()
+    //{
+    //    EndCalibration();
+    //}
+
+    public void EndCalibration()
     {
-        float left = -w * 0.5f + margin;
-        float right = w * 0.5f - margin;
-        float top = h * 0.5f - margin;
-        float bottom = -h * 0.5f + margin;
-
-        float segTop = (right - left);           // top edge length
-        float segRight = (top - bottom);           // right edge length
-        float segBottom = (right - left);           // bottom edge length
-        float segLeft = (top - bottom);           // left edge length
-        float perimeter = segTop + segRight + segBottom + segLeft;
-
-        float dist = t * perimeter;
-
-        if (dist < segTop)                          // top: left → right
-            return new Vector2(left + dist, top);
-
-        dist -= segTop;
-        if (dist < segRight)                        // right: top → bottom
-            return new Vector2(right, top - dist);
-
-        dist -= segRight;
-        if (dist < segBottom)                       // bottom: right → left
-            return new Vector2(right - dist, bottom);
-
-        dist -= segBottom;                          // left: bottom → top
-        return new Vector2(left, bottom + dist);
-    }
-
-    void OnBorderClick()
-    {
-        EndCalibration();
-    }
-
-    void EndCalibration()
-    {
-        finished = true;
-        if (fifthObject != null) fifthObject.SetActive(false);
         //if (redObject != null) redObject.SetActive(false);
         UpdateStatus("Calibration complete!");
     }
@@ -422,12 +459,7 @@ public class CircleCalibration : MonoBehaviour
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.AppendLine("Quadrant," +
-                      "BlueX,BlueY," +
-                      "RedX,RedY," +
-                      "DeltaX,DeltaY," +
-                      "AbsDistanceX,AbsDistanceY," +
-                      "EuclideanDistance");
+        sb.AppendLine("DeltaX," +"DeltaY");
 
         foreach (string row in csvRows)
             sb.AppendLine(row);
@@ -507,8 +539,8 @@ public class CircleCalibration : MonoBehaviour
 
     void ValidateReferences()
     {
-        if (calibrationArea == null) Debug.LogError("[CircleCalibration] calibrationArea is not assigned!");
-        if (blueCirclePrefab == null) Debug.LogError("[CircleCalibration] blueCirclePrefab is not assigned!");
-        if (redRect == null) Debug.LogError("[CircleCalibration] redRect is not assigned!");
+        if (calibrationArea == null) Debug.LogError("[EyeCalibration] calibrationArea is not assigned!");
+        if (blueCirclePrefab == null) Debug.LogError("[EyeCalibration] blueCirclePrefab is not assigned!");
+        if (redRect == null) Debug.LogError("[EyeCalibration] redRect is not assigned!");
     }
 }
