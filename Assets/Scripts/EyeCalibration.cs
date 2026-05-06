@@ -69,11 +69,11 @@ public class EyeCalibration : MonoBehaviour
     private float quadrantHalfH;            // half-height of one quadrant
 
     // ── Fifth circle (border) state ────────────────────────────────────────────
-    private GameObject fifthObject;
-    private RectTransform fifthRect;
+    //private GameObject fifthObject;
+    //private RectTransform fifthRect;
     private bool borderPhase = false;
     private float borderT = 0f;            // 0..1 normalized position along perimeter
-    private float borderTimer = 0f;        // counts up; ends phase when >= borderDuration
+    //private float borderTimer = 0f;        // counts up; ends phase when >= borderDuration
 
     private bool isInitialized = false;
 
@@ -291,12 +291,12 @@ public class EyeCalibration : MonoBehaviour
         //}
         //blueRects[nearestIdx].gameObject.SetActive(true);
 
-        delta.Item1 += (redPos.x - bluePos.x)/4.0f;
-        delta.Item2 += (redPos.y - bluePos.y)/4.0f;
+        delta.Item1 = redPos.x - bluePos.x;
+        delta.Item2 = redPos.y - bluePos.y;
 
         string quadrant = QuadrantNames[nearestIdx];
 
-        
+        csvRows.Add($"{redPos.x:F4},{redPos.y:F4},{bluePos.x:F4},{bluePos.y:F4},{delta.Item1:F4},{delta.Item2:F4}");
 
         blueObjects[nearestIdx].SetActive(false);
         savedCount++;
@@ -305,9 +305,8 @@ public class EyeCalibration : MonoBehaviour
         {
             EndCalibration();
             GetActiveImageName();
-            csvRows.Add($"{delta.Item1:F4},{delta.Item2:F4}");
+            
 
-            Debug.Log($"Δ({delta.Item1:F2},{delta.Item2:F2})");
             WriteCSV();
             
         }
@@ -451,6 +450,7 @@ public class EyeCalibration : MonoBehaviour
 
     public void EndCalibration()
     {
+        finished = true;
         //if (redObject != null) redObject.SetActive(false);
         UpdateStatus("Calibration complete!");
     }
@@ -459,7 +459,7 @@ public class EyeCalibration : MonoBehaviour
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.AppendLine("DeltaX," +"DeltaY");
+        sb.AppendLine("EyeGazeX,"+ "EyeGazeY,"+ "BlueCircleX,"+"BlueCircleY,"+"DeltaX," +"DeltaY");
 
         foreach (string row in csvRows)
             sb.AppendLine(row);

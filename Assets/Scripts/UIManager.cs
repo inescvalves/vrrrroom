@@ -43,6 +43,8 @@ public class UIManager : MonoBehaviour
     private bool isOnPauseScreen = false;
     private int imagesShownSinceLastPause = 0;
 
+    public bool training;
+
 
 
     // -------------------------------------------------------
@@ -146,12 +148,16 @@ public class UIManager : MonoBehaviour
         foreach (Transform child in rxRayImagesParent)
             shuffledImages.Add(child.gameObject);
 
-        // Fisher-Yates shuffle
-        for (int i = shuffledImages.Count - 1; i > 0; i--)
+        if (training == false)
         {
-            int j = Random.Range(0, i + 1);
-            (shuffledImages[i], shuffledImages[j]) = (shuffledImages[j], shuffledImages[i]);
+            // Fisher-Yates shuffle
+            for (int i = shuffledImages.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (shuffledImages[i], shuffledImages[j]) = (shuffledImages[j], shuffledImages[i]);
+            }
         }
+        
 
         foreach (var img in shuffledImages)
             img.SetActive(false);
@@ -167,6 +173,10 @@ public class UIManager : MonoBehaviour
         }
 
         Debug.Log($"RX-Ray: {shuffledImages.Count} images shuffled.");
+        foreach (var go in shuffledImages)
+        {
+            Debug.Log($"RX-Ray List: {go.name}");
+        }
     }
 
     private void ShowNextImage()
