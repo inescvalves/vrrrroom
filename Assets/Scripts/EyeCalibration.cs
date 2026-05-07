@@ -281,8 +281,8 @@ public class EyeCalibration : MonoBehaviour
             return;
         }
 
-        Vector2 redPos = redRect.anchoredPosition;
-        Vector2 bluePos = blueRects[nearestIdx].anchoredPosition;
+        Vector2 redPos = redRect.position;
+        Vector2 bluePos = blueRects[nearestIdx].position;
 
 
         //foreach (var ball in blueRects)

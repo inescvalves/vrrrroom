@@ -1776,7 +1776,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'VRRRoom:
+  m_text: 'VRRRRoom:
 
     <size=24>Virtual Reality Reading Room
 
@@ -10521,7 +10521,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca616f123259e5847ba689793b336185, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CSVLogger
-  userID: 2
+  userID: 0
   logInterval: 0.01
   logEveryFrame: 0
   eyeGaze: {fileID: 1966096044}

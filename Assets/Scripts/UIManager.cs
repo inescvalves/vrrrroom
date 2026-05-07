@@ -197,7 +197,7 @@ public class UIManager : MonoBehaviour
         currentImageIndex++;
         imagesShownSinceLastPause++;
 
-        // All images shown → go to Trial Results
+        // go to Trial Results after all images shown
         if (currentImageIndex >= shuffledImages.Count)
         {
             FindFirstObjectByType<EyeCalibration>().EndCalibration();
@@ -214,7 +214,7 @@ public class UIManager : MonoBehaviour
             yield break;
         }
 
-        // Every N images → show pause screen
+        // show pause screen every N images
         if (imagesShownSinceLastPause >= imagesBetweenPause && pauseBetweenModalities)
         {
             Debug.Log($"RX-Ray: {imagesBetweenPause} images shown, pausing.");
