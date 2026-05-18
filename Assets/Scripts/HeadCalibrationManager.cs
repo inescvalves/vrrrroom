@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class HeadCalibrationManager : MonoBehaviour
 {
@@ -12,6 +13,15 @@ public class HeadCalibrationManager : MonoBehaviour
 
     [Header("Calibration Result UI")]
     public TextMeshProUGUI calibrationResultText;
+
+    [Header("RX Image UI")]
+    public GameObject imageRX;
+    public GameObject imageChildRX1;
+    public GameObject imageChildRX2;
+    public GameObject imageChildRX3;
+
+    [Header("Canvas Aligner")]
+    public CanvasHeadsetAligner targetAligner;
 
     // Recorded positions
     private float baseZ;
@@ -47,7 +57,33 @@ public class HeadCalibrationManager : MonoBehaviour
                 backwardZ = currentZ;
             }
         }
+
+        if ((imageChildRX1.activeSelf || imageChildRX2.activeSelf || imageChildRX3.activeSelf) && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            float distance = RecordDistance();
+        }
     }
+
+    public float RecordDistance()
+    {
+        float distance = Mathf.Abs(cameraTransform.position.z - imageRX.transform.position.z);
+        
+        PlayerPrefs.SetFloat("CalibratedDistance", distance);
+        PlayerPrefs.Save();
+
+        if (targetAligner != null)
+        {
+            targetAligner.SetDistanceFromHead(distance);
+            targetAligner.Recenter();
+        }
+        else
+        {
+            Debug.LogWarning("HeadCalibrationManager: targetAligner is not assigned.");
+        }
+
+        return distance;
+    }
+
 
     // -------------------------------------------------------
     // Called by UIManager when each canvas becomes active

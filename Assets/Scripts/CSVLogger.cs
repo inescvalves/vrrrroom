@@ -120,6 +120,7 @@ public class CSVLogger : MonoBehaviour
         sb.AppendLine("UserID,Timestamp,SessionTime,ImageName, " +
             "WindowLevel, WindowWidth, ZoomIn, ZoomOut," +
             " HeadGazeZ, HeadGazeY, HeadGazeZ," +
+            " EyeGazeX, EyeGazeY," +
             " EyeGazeX (normalized), EyeGazeY (normalized)," +
             " EyeGazeX (corrected), EyeGazeY (corrected)");
         File.WriteAllText(_filePath, sb.ToString(), Encoding.UTF8);
@@ -167,6 +168,7 @@ public class CSVLogger : MonoBehaviour
             {
                 string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel}," +
                     $"{windowWidth},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ}," +
+                    $"{eyeGazeX},{eyeGazeY}," +
                     $"{normalizationEyeGazeX},{normalizationEyeGazeY}," +
                     $"{normalizationCorrectedEyeGazeX},{normalizationCorrectedEyeGazeY}";
                 File.AppendAllText(_filePath, line + Environment.NewLine, Encoding.UTF8);
@@ -200,6 +202,8 @@ public class CSVLogger : MonoBehaviour
                 }
                 normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
                 normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
+
+                Debug.Log("Image:" + ActiveImage.name + ", xminShownImage:" + xminShownImage + ", xmaxShownImage:" + xmaxShownImage + ", yminShownImage:" + yminShownImage + ", " + ymaxShownImage);
 
                 normalizationCorrectedEyeGazeX = normalizationEyeGazeX - delta.Item1;
                 normalizationCorrectedEyeGazeY = normalizationEyeGazeY - delta.Item2;
