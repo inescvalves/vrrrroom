@@ -7,7 +7,7 @@ public class CanvasHeadsetAligner : MonoBehaviour
 {
     [Header("Placement")]
     [Range(0.3f, 5f)]
-    public float distanceFromHead = 1.5f;
+    private float distanceFromHead = 1.5f;
 
     [Range(-1f, 1f)]
     public float verticalOffset = 0f;
@@ -39,7 +39,12 @@ public class CanvasHeadsetAligner : MonoBehaviour
     }
 
     private void Start()
-    {
+    {        
+        if (PlayerPrefs.HasKey("CalibratedDistance"))
+        {
+            distanceFromHead = PlayerPrefs.GetFloat("CalibratedDistance");
+        }
+
         if (_cam != null)
             StartCoroutine(AlignOnStartup());
     }
@@ -69,24 +74,32 @@ public class CanvasHeadsetAligner : MonoBehaviour
 
     private Vector3 TargetPosition()
     {
-        // Use full camera forward (including pitch on Y axis)
+        Vector3 camForwardFlat = new Vector3(_cam.transform.forward.x, 0f, _cam.transform.forward.z).normalized;
+
         return _cam.transform.position
-             + _cam.transform.forward * distanceFromHead
+             + camForwardFlat * distanceFromHead
              + Vector3.up * verticalOffset;
     }
 
     private Quaternion TargetRotation()
     {
-        // Canvas faces the camera, Y axis matches camera's Y axis fully
-        Vector3 lookDir = TargetPosition() - _cam.transform.position;
-        if (lookDir == Vector3.zero) return Quaternion.identity;
-        return Quaternion.LookRotation(lookDir.normalized);
+        // Only use camera's horizontal (yaw) direction, ignoring pitch/roll
+        Vector3 camForwardFlat = new Vector3(_cam.transform.forward.x, 0f, _cam.transform.forward.z);
+
+        if (camForwardFlat == Vector3.zero) return Quaternion.identity;
+
+        return Quaternion.LookRotation(camForwardFlat.normalized, Vector3.up);
     }
 
     public void Recenter()
     {
         StopAllCoroutines();
         StartCoroutine(AlignOnStartup());
+    }
+
+    public void SetDistanceFromHead(float distance)
+    {
+        distanceFromHead = distance;
     }
 
 #if UNITY_EDITOR
