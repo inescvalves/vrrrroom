@@ -116,25 +116,43 @@ public class SpeechRecognitionTest : MonoBehaviour
 
     private void DrainMicBuffer(int currentPos)
     {
+        if (clip == null) return;
+
+        // GetData offset is in per-channel samples, NOT total samples
+        int clipSamples = clip.samples; // per channel
+
         if (currentPos == _lastMicPosition) return;
-        int totalSamples = clip.samples * clip.channels;
 
         if (currentPos > _lastMicPosition)
         {
-            float[] chunk = new float[currentPos - _lastMicPosition];
-            clip.GetData(chunk, _lastMicPosition);
-            _allSamples.AddRange(chunk);
+            int count = currentPos - _lastMicPosition;
+            float[] chunk = new float[count * _recordingChannels];
+            if (_lastMicPosition + count <= clipSamples) // guard: don't exceed clip boundary
+            {
+                clip.GetData(chunk, _lastMicPosition);
+                _allSamples.AddRange(chunk);
+            }
         }
         else
         {
-            float[] chunkA = new float[totalSamples - _lastMicPosition];
-            clip.GetData(chunkA, _lastMicPosition);
-            _allSamples.AddRange(chunkA);
+            // Wrapped: read from _lastMicPosition to end
+            int countA = clipSamples - _lastMicPosition;
+            if (countA > 0)
+            {
+                float[] chunkA = new float[countA * _recordingChannels];
+                clip.GetData(chunkA, _lastMicPosition);
+                _allSamples.AddRange(chunkA);
+            }
 
-            float[] chunkB = new float[currentPos];
-            clip.GetData(chunkB, 0);
-            _allSamples.AddRange(chunkB);
+            // Then read from 0 to currentPos
+            if (currentPos > 0)
+            {
+                float[] chunkB = new float[currentPos * _recordingChannels];
+                clip.GetData(chunkB, 0);
+                _allSamples.AddRange(chunkB);
+            }
         }
+
         _lastMicPosition = currentPos;
     }
 
@@ -145,6 +163,8 @@ public class SpeechRecognitionTest : MonoBehaviour
         DrainMicBuffer(Microphone.GetPosition(micDevice));
         Microphone.End(micDevice);
         recording = false;
+        clip = null;
+        _lastMicPosition = 0;
 
         if (_allSamples.Count == 0) return;
 
