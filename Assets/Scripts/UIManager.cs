@@ -2,6 +2,7 @@ using Oculus.Interaction.Samples;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
@@ -18,15 +19,14 @@ public class UIManager : MonoBehaviour
     public GameObject rxRayImageCanvas;
     public GameObject pauseBeforeChangingAnchorsCanvas;
     public GameObject trialResultsScreenCanvas;
-    
+    public GameObject nextImageConfirmation;
 
     [Header("RX-Ray — drag the 'Images' GameObject here")]
     public Transform rxRayImagesParent;
 
     [Header("Settings")]
     public float fadeDuration = 0.4f;
-    public int imagesBetweenPause = 3; // Pause every N images
-
+    public int imagesBetweenPause = 3;
     public bool pauseBetweenModalities;
 
     [Header("Managers")]
@@ -41,11 +41,10 @@ public class UIManager : MonoBehaviour
     private int currentImageIndex = 0;
     private bool isOnRxRayScreen = false;
     private bool isOnPauseScreen = false;
+    private bool isOnConfirmationScreen = false;
     private int imagesShownSinceLastPause = 0;
 
     public bool training;
-
-
 
     // -------------------------------------------------------
     // Lifecycle
@@ -59,17 +58,18 @@ public class UIManager : MonoBehaviour
 
     private void Start()
     {
+        var test = FindAnyObjectByType<EventSystem>();
         panels = new GameObject[]
         {
-            homeCanvas,                     // 0
-            startCalibrationCanvas,         // 1
-            calibrationForwardCanvas,       // 2
-            calibrationBackwardCanvas,      // 3
-            calibrationResultsCanvas,       // 4
-            rxRayImageCanvas,                // 5
-            pauseBeforeChangingAnchorsCanvas, // 6
-            trialResultsScreenCanvas       // 7
-            
+            homeCanvas,                         // 0
+            //startCalibrationCanvas,             // 1
+            //calibrationForwardCanvas,           // 2
+            //calibrationBackwardCanvas,          // 3
+            //calibrationResultsCanvas,           // 4
+            rxRayImageCanvas,                   // 5
+            pauseBeforeChangingAnchorsCanvas,   // 6
+            nextImageConfirmation,              // 7
+            trialResultsScreenCanvas            // 8
         };
 
         HideAll();
@@ -79,22 +79,28 @@ public class UIManager : MonoBehaviour
 
     private void Update()
     {
-        if (Mouse.current == null || !Mouse.current.rightButton.wasPressedThisFrame) return;
-
+        if (Mouse.current == null) return;
         if (isTransitioning) return;
 
-        if (isOnPauseScreen)
+        bool rightPressed = Mouse.current.rightButton.wasPressedThisFrame;
+        bool leftPressed = Mouse.current.leftButton.wasPressedThisFrame;
+
+        if (isOnConfirmationScreen)
         {
-            // Resume from pause — go back to RX-Ray images
-            StartCoroutine(ResumeFromPause());
+            if (rightPressed) ConfirmNextImage();       // advance to next image
+            else if (leftPressed) GoBackToPrevImage();  // revert to previous image
+        }
+        else if (isOnPauseScreen)
+        {
+            if (rightPressed) StartCoroutine(ResumeFromPause());
         }
         else if (isOnRxRayScreen)
         {
-            ShowNextImage();
+            if (rightPressed) ShowNextImage();
         }
         else
         {
-            GoToNext();
+            if (rightPressed) GoToNext();
         }
     }
 
@@ -105,23 +111,20 @@ public class UIManager : MonoBehaviour
     private void GoToNext()
     {
         if (currentIndex >= panels.Length - 1) return;
-
         int nextIndex = currentIndex + 1;
         bool enteringRxRay = panels[nextIndex] == rxRayImageCanvas;
-
         StartCoroutine(FadeTransition(panels[currentIndex], panels[nextIndex], enteringRxRay));
         currentIndex = nextIndex;
     }
 
-    public void GoToHome()                       => JumpTo(0);
-    public void GoToStartCalibration()           => JumpTo(1);
-    public void GoToCalibrationForward()         => JumpTo(2);
-    public void GoToCalibrationBackward()        => JumpTo(3);
-    public void GoToCalibrationResults()         => JumpTo(4);
-    public void GoToRXRayImage()                 => JumpTo(5);
-    public void GoToPauseBeforeChangingAnchors() => JumpTo(6);
-    public void GoToTrialResultsScreen()         => JumpTo(7);
-    
+    public void GoToHome() => JumpTo(0);
+    //public void GoToStartCalibration() => JumpTo(1);
+    //public void GoToCalibrationForward() => JumpTo(2);
+    //public void GoToCalibrationBackward() => JumpTo(3);
+    //public void GoToCalibrationResults() => JumpTo(4);
+    public void GoToRXRayImage() => JumpTo(1);
+    public void GoToPauseBeforeChangingAnchors() => JumpTo(2);
+    public void GoToTrialResultsScreen() => JumpTo(3);
 
     private void JumpTo(int index)
     {
@@ -150,14 +153,12 @@ public class UIManager : MonoBehaviour
 
         if (training == false)
         {
-            // Fisher-Yates shuffle
             for (int i = shuffledImages.Count - 1; i > 0; i--)
             {
                 int j = Random.Range(0, i + 1);
                 (shuffledImages[i], shuffledImages[j]) = (shuffledImages[j], shuffledImages[i]);
             }
         }
-        
 
         foreach (var img in shuffledImages)
             img.SetActive(false);
@@ -168,28 +169,51 @@ public class UIManager : MonoBehaviour
         if (shuffledImages.Count > 0)
         {
             shuffledImages[0].SetActive(true);
-            CanvasGroup firstCG = GetOrAddCanvasGroup(shuffledImages[0]);
-            firstCG.alpha = 1f; // ensure it's fully visible
+            GetOrAddCanvasGroup(shuffledImages[0]).alpha = 1f;
         }
 
-        Debug.Log($"RX-Ray: {shuffledImages.Count} images shuffled.");
-        foreach (var go in shuffledImages)
-        {
-            Debug.Log($"RX-Ray List: {go.name}");
-        }
+        Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
     }
 
     private void ShowNextImage()
     {
         if (shuffledImages.Count == 0) return;
-        StartCoroutine(FadeToNextImage());
+
+        if (training)
+            StartCoroutine(AdvanceImageDirectly());
+        else
+            StartCoroutine(FadeToConfirmation());
     }
 
-    private IEnumerator FadeToNextImage()
+    // Fade out the current image and show the confirmation screen.
+    private IEnumerator FadeToConfirmation()
     {
         isTransitioning = true;
+        isOnRxRayScreen = false;
 
-        // Fade OUT current image
+        CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+        yield return StartCoroutine(Fade(currentCG, 1f, 0f));
+        shuffledImages[currentImageIndex].SetActive(false);
+
+        // Show confirmation canvas
+        rxRayImageCanvas.SetActive(true);   // keep the parent canvas active as backdrop
+        nextImageConfirmation.SetActive(true);
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        confirmCG.alpha = 0f;
+        yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
+
+        isOnConfirmationScreen = true;
+       
+        
+        isTransitioning = false;
+    }
+
+    private IEnumerator AdvanceImageDirectly()
+    {
+        isTransitioning = true;
+        isOnRxRayScreen = false;
+
+        // Fade out current image
         CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         yield return StartCoroutine(Fade(currentCG, 1f, 0f));
         shuffledImages[currentImageIndex].SetActive(false);
@@ -197,15 +221,14 @@ public class UIManager : MonoBehaviour
         currentImageIndex++;
         imagesShownSinceLastPause++;
 
-        // go to Trial Results after all images shown
+        // All images shown → go to Trial Results
         if (currentImageIndex >= shuffledImages.Count)
         {
             FindFirstObjectByType<EyeCalibration>().EndCalibration();
-            Debug.Log("RX-Ray: All images shown. Going to Trial Results.");
-            isOnRxRayScreen = false;
-            int trialResultsIndex = System.Array.IndexOf(panels, trialResultsScreenCanvas);
+            Debug.Log("RX-Ray (training): All images shown. Going to Trial Results.");
+            int trialIdx = System.Array.IndexOf(panels, trialResultsScreenCanvas);
             StartCoroutine(FadeTransition(rxRayImageCanvas, trialResultsScreenCanvas, false));
-            currentIndex = trialResultsIndex;
+            currentIndex = trialIdx;
             isTransitioning = false;
             while (!Mouse.current.rightButton.wasPressedThisFrame)
                 yield return null;
@@ -214,24 +237,118 @@ public class UIManager : MonoBehaviour
             yield break;
         }
 
-        // show pause screen every N images
+        // Pause every N images (respects pauseBetweenModalities even in training if you want)
         if (imagesShownSinceLastPause >= imagesBetweenPause && pauseBetweenModalities)
         {
-            Debug.Log($"RX-Ray: {imagesBetweenPause} images shown, pausing.");
-            isOnRxRayScreen = false;
+            Debug.Log($"RX-Ray (training): {imagesBetweenPause} images shown, pausing.");
             isOnPauseScreen = true;
-            StartCoroutine(FadeTransition(rxRayImageCanvas, pauseBeforeChangingAnchorsCanvas, false));
+            rxRayImageCanvas.SetActive(false);
+            pauseBeforeChangingAnchorsCanvas.SetActive(true);
+            CanvasGroup pauseCG = GetOrAddCanvasGroup(pauseBeforeChangingAnchorsCanvas);
+            pauseCG.alpha = 0f;
+            yield return StartCoroutine(Fade(pauseCG, 0f, 1f));
             isTransitioning = false;
             yield break;
         }
 
-        // Fade IN next image
+        // Fade in next image directly
+        shuffledImages[currentImageIndex].SetActive(true);
+        CanvasGroup nextCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+        nextCG.alpha = 0f;
+        yield return StartCoroutine(Fade(nextCG, 0f, 1f));
+
+        Debug.Log($"RX-Ray (training): Showing image {currentImageIndex + 1} of {shuffledImages.Count}");
+        isOnRxRayScreen = true;
+        isTransitioning = false;
+    }
+
+    // Right-click on confirmation: advance to the next image (or end/pause).
+    private void ConfirmNextImage()
+    {
+        StartCoroutine(ConfirmNextImageRoutine());
+    }
+
+    private IEnumerator ConfirmNextImageRoutine()
+    {
+        isTransitioning = true;
+        isOnConfirmationScreen = false;
+
+
+        
+        // Fade out confirmation
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
+        nextImageConfirmation.SetActive(false);
+      
+        
+        currentImageIndex++;
+        imagesShownSinceLastPause++;
+
+        // All images shown → go to Trial Results
+        if (currentImageIndex >= shuffledImages.Count)
+        {
+            FindFirstObjectByType<EyeCalibration>().EndCalibration();
+            Debug.Log("RX-Ray: All images shown. Going to Trial Results.");
+            int trialIdx = System.Array.IndexOf(panels, trialResultsScreenCanvas);
+            StartCoroutine(FadeTransition(rxRayImageCanvas, trialResultsScreenCanvas, false));
+            currentIndex = trialIdx;
+            isTransitioning = false;
+            while (!Mouse.current.rightButton.wasPressedThisFrame)
+                yield return null;
+            if (SceneManager.GetActiveScene().name != "VRRRRoom Static")
+                SceneManager.LoadScene("VRRRRoom Static");
+            yield break;
+        }
+
+        // Pause every N images
+        if (imagesShownSinceLastPause >= imagesBetweenPause && pauseBetweenModalities)
+        {
+            Debug.Log($"RX-Ray: {imagesBetweenPause} images shown, pausing.");
+            isOnPauseScreen = true;
+            rxRayImageCanvas.SetActive(false);
+            pauseBeforeChangingAnchorsCanvas.SetActive(true);
+            CanvasGroup pauseCG = GetOrAddCanvasGroup(pauseBeforeChangingAnchorsCanvas);
+            pauseCG.alpha = 0f;
+            yield return StartCoroutine(Fade(pauseCG, 0f, 1f));
+            isTransitioning = false;
+            yield break;
+        }
+
+        // Show next image
         shuffledImages[currentImageIndex].SetActive(true);
         CanvasGroup nextCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         nextCG.alpha = 0f;
         yield return StartCoroutine(Fade(nextCG, 0f, 1f));
 
         Debug.Log($"RX-Ray: Showing image {currentImageIndex + 1} of {shuffledImages.Count}");
+        isOnRxRayScreen = true;
+        isTransitioning = false;
+    }
+
+    // Left-click on confirmation: go back to the image that was just dismissed.
+    private void GoBackToPrevImage()
+    {
+        StartCoroutine(GoBackToPrevImageRoutine());
+    }
+
+    private IEnumerator GoBackToPrevImageRoutine()
+    {
+        isTransitioning = true;
+        isOnConfirmationScreen = false;
+
+        // Fade out confirmation
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
+        nextImageConfirmation.SetActive(false);
+
+        // Restore the current image (index was NOT incremented yet)
+        shuffledImages[currentImageIndex].SetActive(true);
+        CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+        imgCG.alpha = 0f;
+        yield return StartCoroutine(Fade(imgCG, 0f, 1f));
+
+        Debug.Log($"RX-Ray: Back to image {currentImageIndex + 1} of {shuffledImages.Count}");
+        isOnRxRayScreen = true;
         isTransitioning = false;
     }
 
@@ -240,7 +357,6 @@ public class UIManager : MonoBehaviour
         isTransitioning = true;
         isOnPauseScreen = false;
 
-        // Fade out pause screen, fade in RX-Ray canvas
         CanvasGroup fromCG = GetOrAddCanvasGroup(pauseBeforeChangingAnchorsCanvas);
         yield return StartCoroutine(Fade(fromCG, 1f, 0f));
         pauseBeforeChangingAnchorsCanvas.SetActive(false);
@@ -250,11 +366,12 @@ public class UIManager : MonoBehaviour
         toCG.alpha = 0f;
         yield return StartCoroutine(Fade(toCG, 0f, 1f));
 
-        // Show the next image and reset pause counter
         imagesShownSinceLastPause = 0;
         shuffledImages[currentImageIndex].SetActive(true);
-        Debug.Log($"RX-Ray: Resumed, showing image {currentImageIndex + 1} of {shuffledImages.Count}");
+        CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+        imgCG.alpha = 1f;
 
+        Debug.Log($"RX-Ray: Resumed, showing image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
         isTransitioning = false;
     }
@@ -273,11 +390,14 @@ public class UIManager : MonoBehaviour
         from.SetActive(false);
 
         to.SetActive(true);
-        if (to == startCalibrationCanvas) HeadCalibrationManager.Instance?.OnStartCalibrationEnabled();
-        else if (to == calibrationForwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationForwardEnabled();
-        else if (to == calibrationBackwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationBackwardEnabled();
-        else if (to == calibrationResultsCanvas) HeadCalibrationManager.Instance?.OnCalibrationResultsEnabled();
+        //if (training == false)
+        //{
+        //    if (to == startCalibrationCanvas) HeadCalibrationManager.Instance?.OnStartCalibrationEnabled();
+        //    else if (to == calibrationForwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationForwardEnabled();
+        //    else if (to == calibrationBackwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationBackwardEnabled();
+        //    else if (to == calibrationResultsCanvas) HeadCalibrationManager.Instance?.OnCalibrationResultsEnabled();
 
+        //}
         CanvasGroup toCG = GetOrAddCanvasGroup(to);
         toCG.alpha = 0f;
         yield return StartCoroutine(Fade(toCG, 0f, 1f));
@@ -295,14 +415,12 @@ public class UIManager : MonoBehaviour
     {
         float elapsed = 0f;
         cg.alpha = from;
-
         while (elapsed < fadeDuration)
         {
             elapsed += Time.deltaTime;
             cg.alpha = Mathf.Lerp(from, to, elapsed / fadeDuration);
             yield return null;
         }
-
         cg.alpha = to;
     }
 
