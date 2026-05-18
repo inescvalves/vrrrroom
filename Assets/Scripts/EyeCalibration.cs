@@ -33,8 +33,8 @@ public class EyeCalibration : MonoBehaviour
     [Tooltip("How long (seconds) the fifth circle travels before calibration ends. 0 = click to finish.")]
     public float borderDuration = 10f;
 
-    [Header("UI References")]
-    public TextMeshProUGUI statusText;
+    //[Header("UI References")]
+    //public TextMeshProUGUI statusText;
 
     [Header("CSV Logger")]
     public string csvLoggerObjectName = "CSVLogger";
@@ -46,6 +46,10 @@ public class EyeCalibration : MonoBehaviour
 
     [Header("RX-Ray Image Reference")]
     public GameObject imagesContainer;
+
+    public GameObject imageRXRay;
+
+    public LayerMask gazeLayerMask = ~0;
 
     // ── Internal state ─────────────────────────────────────────────────────────
     private RectTransform[] blueRects = new RectTransform[4];
@@ -127,7 +131,7 @@ public class EyeCalibration : MonoBehaviour
         driftTarget = RandomPositionInQuadrant(activeBlueIdx);
         driftTimer = blueDriftInterval;
 
-        UpdateStatus($"Look at a blue circle, then click on the left button. ({savedCount}/4)");
+        //UpdateStatus($"Look at a blue circle, then click on the left button. ({savedCount}/4)");
 
         isInitialized = true;
     }
@@ -184,7 +188,7 @@ public class EyeCalibration : MonoBehaviour
             driftTarget,
             blueDriftSpeed * Time.deltaTime);
 
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current.leftButton.wasPressedThisFrame && imageRXRay != null && imageRXRay.activeSelf)
             OnLeftClick();
     }
 
@@ -277,7 +281,7 @@ public class EyeCalibration : MonoBehaviour
         int nearestIdx = FindNearestBlueCircle();
         if (nearestIdx < 0)
         {
-            UpdateStatus("No blue circles remaining!");
+            //UpdateStatus("No blue circles remaining!");
             return;
         }
 
@@ -303,8 +307,8 @@ public class EyeCalibration : MonoBehaviour
 
         if (savedCount >= 4)
         {
-            EndCalibration();
-            GetActiveImageName();
+            //EndCalibration();
+            //GetActiveImageName();
             
 
             WriteCSV();
@@ -317,7 +321,7 @@ public class EyeCalibration : MonoBehaviour
             blueObjects[activeBlueIdx].SetActive(true);
             driftTarget = RandomPositionInQuadrant(activeBlueIdx);
             driftTimer = blueDriftInterval;
-            UpdateStatus($"Look at the next blue circle. ({savedCount}/4)");
+            //UpdateStatus($"Look at the next blue circle. ({savedCount}/4)");
         }
     }
 
@@ -452,7 +456,7 @@ public class EyeCalibration : MonoBehaviour
     {
         finished = true;
         //if (redObject != null) redObject.SetActive(false);
-        UpdateStatus("Calibration complete!");
+        //UpdateStatus("Calibration complete!");
     }
 
     void WriteCSV()
@@ -467,6 +471,8 @@ public class EyeCalibration : MonoBehaviour
         string path = CsvPath();
         File.WriteAllText(path, sb.ToString());
         Debug.Log($"[Calibration] CSV written to: {path}");
+
+        EndCalibration();
     }
 
     // ── Path helpers ───────────────────────────────────────────────────────────
@@ -532,10 +538,10 @@ public class EyeCalibration : MonoBehaviour
 
     // ── UI & validation ────────────────────────────────────────────────────────
 
-    void UpdateStatus(string msg)
-    {
-        if (statusText != null) statusText.text = msg;
-    }
+    //void UpdateStatus(string msg)
+    //{
+    //    if (statusText != null) statusText.text = msg;
+    //}
 
     void ValidateReferences()
     {
