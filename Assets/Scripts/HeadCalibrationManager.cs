@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class HeadCalibrationManager : MonoBehaviour
 {
@@ -37,6 +38,35 @@ public class HeadCalibrationManager : MonoBehaviour
         
     }
 
+    private void Start()
+    {
+        if (SceneManager.GetActiveScene().name == "VRRRRoom Training")
+        {
+            // Always reset to 1.5m at the start of training
+            PlayerPrefs.SetFloat("CalibratedDistance", 1.5f);
+            PlayerPrefs.Save();
+
+            if (targetAligner != null)
+            {
+                targetAligner.SetDistanceFromHead(1.5f);
+                targetAligner.Recenter();
+            }
+            Debug.Log("Training started: distance reset to 1.5m");
+        }
+        else if (SceneManager.GetActiveScene().name == "VRRRRoom Static")
+        {
+            // Use whatever was saved during training (measured or 1.5 fallback)
+            float savedDistance = PlayerPrefs.GetFloat("CalibratedDistance", 1.5f);
+
+            if (targetAligner != null)
+            {
+                targetAligner.SetDistanceFromHead(savedDistance);
+                targetAligner.Recenter();
+            }
+            Debug.Log($"Static scene: using calibrated distance = {savedDistance}m");
+        }
+    }
+
     private void Update()
     {
         if (trackingForward)
@@ -66,9 +96,10 @@ public class HeadCalibrationManager : MonoBehaviour
     public float RecordDistance()
     {
         float distance = Mathf.Abs(cameraTransform.position.z - imageRX.transform.position.z);
-        
+
         PlayerPrefs.SetFloat("CalibratedDistance", distance);
         PlayerPrefs.Save();
+        Debug.Log($"RecordDistance() called — saved {distance}m to PlayerPrefs");
 
         if (targetAligner != null)
         {

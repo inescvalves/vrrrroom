@@ -7,7 +7,7 @@ public class CanvasHeadsetAligner : MonoBehaviour
 {
     [Header("Placement")]
     [Range(0.3f, 5f)]
-    private float distanceFromHead = 1.5f;
+    private float distanceFromHead;
 
     [Range(-1f, 1f)]
     public float verticalOffset = 0f;

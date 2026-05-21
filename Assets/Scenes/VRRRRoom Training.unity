@@ -7869,6 +7869,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1067267864}
   m_CullTransparentMesh: 1
+--- !u!1 &1068276499
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1068276501}
+  - component: {fileID: 1068276500}
+  m_Layer: 0
+  m_Name: Painting Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1068276500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068276499}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8c39de5ea23efd47a1eb3f7678d7daa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRCursorPainter
+  vrCursor: {fileID: 2013653112}
+  uiManager: {fileID: 399178899}
+  brushSize: 25
+  outputFolderName: PaintingData
+  fallbackUserID: unknown_user
+--- !u!4 &1068276501
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068276499}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.00744, y: 1.27045, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1089356216
 GameObject:
   m_ObjectHideFlags: 0
@@ -10371,7 +10420,6 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2013653110}
   - {fileID: 1455048929}
   - {fileID: 1240264000}
   m_Father: {fileID: 0}
@@ -16120,7 +16168,6 @@ GameObject:
   - component: {fileID: 2013653110}
   - component: {fileID: 2013653111}
   - component: {fileID: 2013653112}
-  - component: {fileID: 2013653113}
   m_Layer: 3
   m_Name: VRCursor
   m_TagString: Untagged
@@ -16141,7 +16188,7 @@ Transform:
   m_LocalScale: {x: 0.03, y: 0.03, z: 0.03}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1416681910}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &2013653111
 SpriteRenderer:
@@ -16221,21 +16268,6 @@ MonoBehaviour:
   redoButton: {fileID: 1918859053}
   cursorOffsetY: 0
   cursorOffsetX: 0
---- !u!114 &2013653113
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2013653109}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8c39de5ea23efd47a1eb3f7678d7daa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VRCursorPainter
-  vrCursor: {fileID: 2013653112}
-  uiManager: {fileID: 399178899}
-  brushSize: 25
 --- !u!1 &2019465722
 GameObject:
   m_ObjectHideFlags: 0
@@ -17004,6 +17036,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 1988251163}
   - {fileID: 1966096044}
+  - {fileID: 2013653110}
   - {fileID: 1416681910}
   - {fileID: 2135291232}
   - {fileID: 324041678}
@@ -17020,3 +17053,4 @@ SceneRoots:
   - {fileID: 396793600}
   - {fileID: 713562891}
   - {fileID: 573934051}
+  - {fileID: 1068276501}
