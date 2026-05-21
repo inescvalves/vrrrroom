@@ -52,8 +52,8 @@ public class EyeCalibration : MonoBehaviour
     public LayerMask gazeLayerMask = ~0;
 
     // ── Internal state ─────────────────────────────────────────────────────────
-    private RectTransform[] blueRects = new RectTransform[4];
-    private GameObject[] blueObjects = new GameObject[4];
+    private RectTransform[] blueRects = new RectTransform[6];
+    private GameObject[] blueObjects = new GameObject[6];
     private GameObject redObject;
 
     private List<string> csvRows = new List<string>();
@@ -62,7 +62,7 @@ public class EyeCalibration : MonoBehaviour
     private string resolvedUserID;
 
     private static readonly string[] QuadrantNames =
-        { "TopLeft", "TopRight", "BottomLeft", "BottomRight" };
+    { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "MiddleLeft", "MiddleRight" };
 
     // ── Drift state ────────────────────────────────────────────────────────────
     private int activeBlueIdx = 0;          // which circle is currently shown
@@ -125,7 +125,7 @@ public class EyeCalibration : MonoBehaviour
 
         // Show only the first blue circle; hide the rest
         activeBlueIdx = 0;
-        for (int i = 1; i < 4; i++) blueObjects[i].SetActive(false);
+        for (int i = 1; i < 6; i++) blueObjects[i].SetActive(false);
 
         // Seed the first drift target
         driftTarget = RandomPositionInQuadrant(activeBlueIdx);
@@ -174,22 +174,24 @@ public class EyeCalibration : MonoBehaviour
             //if (Mouse.current.leftButton.wasPressedThisFrame) EndCalibration();
             //return;
         }
-
-        // ── Drift the active blue circle ───────────────────────────────────────
-        driftTimer -= Time.deltaTime;
-        if (driftTimer <= 0f)
+        if (activeBlueIdx < 4)  // only drift the original quadrant circles
         {
-            driftTarget = RandomPositionInQuadrant(activeBlueIdx);
-            driftTimer = blueDriftInterval;
+            // ── Drift the active blue circle ───────────────────────────────────────
+            driftTimer -= Time.deltaTime;
+            if (driftTimer <= 0f)
+            {
+                driftTarget = RandomPositionInQuadrant(activeBlueIdx);
+                driftTimer = blueDriftInterval;
+            }
+
+            blueRects[activeBlueIdx].anchoredPosition = Vector2.MoveTowards(
+                blueRects[activeBlueIdx].anchoredPosition,
+                driftTarget,
+                blueDriftSpeed * Time.deltaTime);
         }
 
-        blueRects[activeBlueIdx].anchoredPosition = Vector2.MoveTowards(
-            blueRects[activeBlueIdx].anchoredPosition,
-            driftTarget,
-            blueDriftSpeed * Time.deltaTime);
-
         if (Mouse.current.leftButton.wasPressedThisFrame && imageRXRay != null && imageRXRay.activeSelf)
-            OnLeftClick();
+                OnLeftClick();
     }
 
     // ── Spawning ───────────────────────────────────────────────────────────────
@@ -216,6 +218,26 @@ public class EyeCalibration : MonoBehaviour
 
             blueObjects[i] = go;
             blueRects[i] = rt;
+        }
+
+        float halfW = calibrationArea.rect.width * 0.5f;  // 0.5 of half-width = quarter of full width
+        Vector2[] extraPositions = new Vector2[]
+        {
+            new Vector2(-halfW, 0f),  // Left  at x = -0.25 * fullWidth
+            new Vector2( halfW, 0f),  // Right at x = +0.25 * fullWidth
+        };
+
+        for (int i = 0; i < 2; i++)
+        {
+            GameObject go = Instantiate(blueCirclePrefab, calibrationArea);
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(blueCircleRadius * 2f, blueCircleRadius * 2f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = extraPositions[i];
+            blueObjects[4 + i] = go;
+            blueRects[4 + i] = rt;
         }
 
         // Store quadrant origins for drift boundary calculations
@@ -305,7 +327,7 @@ public class EyeCalibration : MonoBehaviour
         blueObjects[nearestIdx].SetActive(false);
         savedCount++;
 
-        if (savedCount >= 4)
+        if (savedCount >= 6)
         {
             //EndCalibration();
             //GetActiveImageName();
@@ -319,9 +341,12 @@ public class EyeCalibration : MonoBehaviour
             // Activate the next quadrant's circle and seed its drift
             activeBlueIdx = savedCount;
             blueObjects[activeBlueIdx].SetActive(true);
-            driftTarget = RandomPositionInQuadrant(activeBlueIdx);
-            driftTimer = blueDriftInterval;
-            //UpdateStatus($"Look at the next blue circle. ({savedCount}/4)");
+            if (activeBlueIdx < 4)  // only seed drift for quadrant circles
+            {
+                driftTarget = RandomPositionInQuadrant(activeBlueIdx);
+                driftTimer = blueDriftInterval;
+                //UpdateStatus($"Look at the next blue circle. ({savedCount}/4)");
+            }
         }
     }
 
@@ -365,7 +390,7 @@ public class EyeCalibration : MonoBehaviour
         int best = -1;
         float bestDist = float.MaxValue;
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             if (!blueObjects[i].activeSelf) continue;
             float d = Vector2.Distance(redRect.anchoredPosition, blueRects[i].anchoredPosition);

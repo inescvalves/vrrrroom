@@ -7,8 +7,15 @@ public class EyeTrackingDisc : MonoBehaviour
     public OVREyeGaze rightEye;  // drag OVREyeGaze GameObject
     public Transform rxRayImageRoot;
 
-
     private Renderer _renderer;
+
+    private bool isActive = false;
+
+    public void SetActive(bool active)
+    {
+        isActive = active;
+        if (!active) SetVisible(false);
+    }
 
     private void Awake()
     {
@@ -18,6 +25,8 @@ public class EyeTrackingDisc : MonoBehaviour
 
     private void Update()
     {
+        if (!isActive) return;
+
         // Average both eyes for more stable gaze
         OVREyeGaze activeEye = (leftEye != null && leftEye.EyeTrackingEnabled)
                                ? leftEye : rightEye;

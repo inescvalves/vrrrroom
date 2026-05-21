@@ -17,8 +17,6 @@ public class HeadCalibrationManager : MonoBehaviour
     [Header("RX Image UI")]
     public GameObject imageRX;
     public GameObject imageChildRX1;
-    public GameObject imageChildRX2;
-    public GameObject imageChildRX3;
 
     [Header("Canvas Aligner")]
     public CanvasHeadsetAligner targetAligner;
@@ -36,6 +34,7 @@ public class HeadCalibrationManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        
     }
 
     private void Update()
@@ -57,8 +56,8 @@ public class HeadCalibrationManager : MonoBehaviour
                 backwardZ = currentZ;
             }
         }
-
-        if ((imageChildRX1.activeSelf || imageChildRX2.activeSelf || imageChildRX3.activeSelf) && Mouse.current.leftButton.wasPressedThisFrame)
+ 
+        if (imageChildRX1.activeSelf && Mouse.current.leftButton.wasPressedThisFrame && UIManager.Instance.isOnEllipseScreen == false)
         {
             float distance = RecordDistance();
         }

@@ -49,19 +49,24 @@ public class ImageEffectsController : MonoBehaviour
 
     private void Update()
     {
+        if (UIManager.Instance != null && UIManager.Instance.isOnEllipseScreen) return;
         var mouse = Mouse.current;
         var keyboard = Keyboard.current;
         if (mouse == null) return;
 
         if (mouse.leftButton.wasPressedThisFrame)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            // Don't lock when ellipse screen is active
+            if (UIManager.Instance == null || !UIManager.Instance.isOnEllipseScreen)
+            {
+                UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+                UnityEngine.Cursor.visible = false;
+            }
         }
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            UnityEngine.Cursor.visible = true;
         }
 
         bool isPressed = mouse.leftButton.isPressed;

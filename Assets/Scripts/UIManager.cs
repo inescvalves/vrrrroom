@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 public class UIManager : MonoBehaviour
 {
@@ -20,6 +21,9 @@ public class UIManager : MonoBehaviour
     public GameObject pauseBeforeChangingAnchorsCanvas;
     public GameObject trialResultsScreenCanvas;
     public GameObject nextImageConfirmation;
+    public GameObject analysisConcludedConfirmation;
+    public GameObject ellipsesLegend;
+    public EyeTrackingDisc eyeTrackingDisc;
 
     [Header("RX-Ray — drag the 'Images' GameObject here")]
     public Transform rxRayImagesParent;
@@ -43,8 +47,17 @@ public class UIManager : MonoBehaviour
     private bool isOnPauseScreen = false;
     private bool isOnConfirmationScreen = false;
     private int imagesShownSinceLastPause = 0;
+    private bool isOnAnalysisConfirmationScreen = false;
+    public bool isOnEllipseScreen = false;
 
     public bool training;
+
+    private bool firstImageShown = false;
+
+    public Transform vrCursorRect;
+    private GameObject vrCursorInstance;
+    private Camera mainCamera;
+
 
     // -------------------------------------------------------
     // Lifecycle
@@ -54,6 +67,8 @@ public class UIManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        mainCamera = Camera.main;
     }
 
     private void Start()
@@ -69,12 +84,14 @@ public class UIManager : MonoBehaviour
             rxRayImageCanvas,                   // 5
             pauseBeforeChangingAnchorsCanvas,   // 6
             nextImageConfirmation,              // 7
+            analysisConcludedConfirmation,
             trialResultsScreenCanvas            // 8
         };
 
         HideAll();
         panels[0].SetActive(true);
         currentIndex = 0;
+        vrCursorRect.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -85,23 +102,56 @@ public class UIManager : MonoBehaviour
         bool rightPressed = Mouse.current.rightButton.wasPressedThisFrame;
         bool leftPressed = Mouse.current.leftButton.wasPressedThisFrame;
 
+        if (isOnEllipseScreen)
+            UpdateVRCursor();
+
         if (isOnConfirmationScreen)
         {
-            if (rightPressed) ConfirmNextImage();       // advance to next image
-            else if (leftPressed) GoBackToPrevImage();  // revert to previous image
+            if (rightPressed) { isOnEllipseScreen = false; ConfirmNextImage(); }
+            else if (leftPressed) StartCoroutine(GoBackToEllipseRoutine());
+        }
+        else if (isOnAnalysisConfirmationScreen)
+        {
+            if (rightPressed) { isOnEllipseScreen = true; GoBackToPrevImage(); }
+            else if (leftPressed) { isOnEllipseScreen = false; GoBackToPrevImage(); }
+        }
+        else if (isOnRxRayScreen && isOnEllipseScreen)
+        {
+            if (rightPressed) { vrCursorRect.gameObject.SetActive(false); StartCoroutine(FadeToConfirmation()); }
+        }
+        else if (isOnRxRayScreen && !isOnEllipseScreen)
+        {
+            if (rightPressed) ShowNextImage();
         }
         else if (isOnPauseScreen)
         {
             if (rightPressed) StartCoroutine(ResumeFromPause());
         }
-        else if (isOnRxRayScreen)
-        {
-            if (rightPressed) ShowNextImage();
-        }
         else
         {
             if (rightPressed) GoToNext();
         }
+    }
+
+    private void UpdateVRCursor()
+    {
+        if (vrCursorRect == null || mainCamera == null) return;
+
+        Canvas canvas = rxRayImageCanvas.GetComponent<Canvas>();
+        if (canvas == null) return;
+
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            Mouse.current.position.ReadValue(),
+            canvas.worldCamera != null ? canvas.worldCamera : mainCamera,
+            out Vector2 localPoint
+        );
+
+        // Convert local canvas point to world position, slightly in front of canvas
+        Vector3 worldPoint = canvas.transform.TransformPoint(new Vector3(localPoint.x, localPoint.y, 0f));
+        vrCursorRect.transform.position = worldPoint + canvas.transform.forward * -0.01f;
     }
 
     // -------------------------------------------------------
@@ -173,37 +223,88 @@ public class UIManager : MonoBehaviour
         }
 
         Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
+        firstImageShown = false;
     }
 
     private void ShowNextImage()
     {
         if (shuffledImages.Count == 0) return;
 
-        if (training)
-            StartCoroutine(AdvanceImageDirectly());
+        if (training && !firstImageShown)
+        {
+            firstImageShown = true;
+            StartCoroutine(AdvanceImageDirectly());  // first image: skip all confirmations
+        }
         else
-            StartCoroutine(FadeToConfirmation());
+            StartCoroutine(FadeToAnalysisConfirmation());  // all others: normal flow
     }
 
     // Fade out the current image and show the confirmation screen.
     private IEnumerator FadeToConfirmation()
     {
         isTransitioning = true;
-        isOnRxRayScreen = false;
+        isOnAnalysisConfirmationScreen = false;
+        SetEllipsesLegend(false);
+        if (currentImageIndex < shuffledImages.Count && shuffledImages[currentImageIndex].activeSelf)
+        {
+            CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+            yield return StartCoroutine(Fade(imgCG, 1f, 0f));
+            shuffledImages[currentImageIndex].SetActive(false);
+        }
 
+        // Fade in next image confirmation
+        nextImageConfirmation.SetActive(true);
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        confirmCG.alpha = 0f;
+        yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
+
+        
+
+        isOnConfirmationScreen = true;
+        isTransitioning = false;
+    }
+
+    private IEnumerator FadeToAnalysisConfirmation()
+    {
+        isTransitioning = true;
+        isOnRxRayScreen = false;
+        SetEllipsesLegend(isOnEllipseScreen);
         CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         yield return StartCoroutine(Fade(currentCG, 1f, 0f));
         shuffledImages[currentImageIndex].SetActive(false);
 
         // Show confirmation canvas
         rxRayImageCanvas.SetActive(true);   // keep the parent canvas active as backdrop
-        nextImageConfirmation.SetActive(true);
-        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        analysisConcludedConfirmation.SetActive(true);
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(analysisConcludedConfirmation);
         confirmCG.alpha = 0f;
         yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
 
-        isOnConfirmationScreen = true;
-       
+        isOnAnalysisConfirmationScreen = true;
+        
+
+        isTransitioning = false;
+    }
+
+    private IEnumerator GoBackToEllipseRoutine()
+    {
+        eyeTrackingDisc?.SetActive(false);
+        
+        isTransitioning = true;
+        isOnConfirmationScreen = false;
+
+        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+        yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
+        nextImageConfirmation.SetActive(false);
+
+        shuffledImages[currentImageIndex].SetActive(true);
+        CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
+        imgCG.alpha = 0f;
+        yield return StartCoroutine(Fade(imgCG, 0f, 1f));
+        SetEllipsesLegend(true);
+        // Ellipse image is already visible behind — just restore state
+        isOnEllipseScreen = true;
+        isOnRxRayScreen = true;
         
         isTransitioning = false;
     }
@@ -221,7 +322,7 @@ public class UIManager : MonoBehaviour
         currentImageIndex++;
         imagesShownSinceLastPause++;
 
-        // All images shown → go to Trial Results
+        // All images shown -> go to Trial Results
         if (currentImageIndex >= shuffledImages.Count)
         {
             FindFirstObjectByType<EyeCalibration>().EndCalibration();
@@ -284,7 +385,7 @@ public class UIManager : MonoBehaviour
         currentImageIndex++;
         imagesShownSinceLastPause++;
 
-        // All images shown → go to Trial Results
+        // All images shown -> go to Trial Results
         if (currentImageIndex >= shuffledImages.Count)
         {
             FindFirstObjectByType<EyeCalibration>().EndCalibration();
@@ -322,6 +423,8 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray: Showing image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
+        eyeTrackingDisc?.SetActive(true);
+        SetEllipsesLegend(false);
         isTransitioning = false;
     }
 
@@ -333,15 +436,28 @@ public class UIManager : MonoBehaviour
 
     private IEnumerator GoBackToPrevImageRoutine()
     {
+        eyeTrackingDisc?.SetActive(!isOnEllipseScreen);
+        SetEllipsesLegend(isOnEllipseScreen);
         isTransitioning = true;
         isOnConfirmationScreen = false;
+        isOnAnalysisConfirmationScreen = false;
 
-        // Fade out confirmation
-        CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
-        yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
-        nextImageConfirmation.SetActive(false);
+        // Fade out whichever confirmation is active
+        if (nextImageConfirmation.activeSelf)
+        {
+            CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
+            yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
+            nextImageConfirmation.SetActive(false);
+        }
 
-        // Restore the current image (index was NOT incremented yet)
+        if (analysisConcludedConfirmation.activeSelf)
+        {
+            CanvasGroup analysisCG = GetOrAddCanvasGroup(analysisConcludedConfirmation);
+            yield return StartCoroutine(Fade(analysisCG, 1f, 0f));
+            analysisConcludedConfirmation.SetActive(false);
+        }
+
+        // Restore the current image
         shuffledImages[currentImageIndex].SetActive(true);
         CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         imgCG.alpha = 0f;
@@ -349,6 +465,7 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray: Back to image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
+        
         isTransitioning = false;
     }
 
@@ -406,6 +523,8 @@ public class UIManager : MonoBehaviour
         {
             SetupRxRayImages();
             isOnRxRayScreen = true;
+            eyeTrackingDisc?.SetActive(true);
+            SetEllipsesLegend(false);
         }
 
         isTransitioning = false;
@@ -439,5 +558,16 @@ public class UIManager : MonoBehaviour
     {
         foreach (var panel in panels)
             if (panel != null) panel.SetActive(false);
+    }
+
+    private void SetEllipsesLegend(bool active)
+    {
+        ellipsesLegend.SetActive(active);
+        if (vrCursorRect != null)
+            vrCursorRect.gameObject.SetActive(active);
+
+        // When legend is active, unlock system cursor so mouse.delta works
+        UnityEngine.Cursor.lockState = active ? CursorLockMode.None : CursorLockMode.Locked;
+        UnityEngine.Cursor.visible = false; // always hide system cursor in VR
     }
 }
