@@ -6,14 +6,14 @@ public class VRCursor : MonoBehaviour
 {
     [Header("References")]
     public UIManager uiManager;
-    public Transform legendSquaresParent; // drag the Legend GameObject here
+    public Transform legendSquaresParent;
+    public VRCursorPainter cursorPainter;
 
     [Header("Settings")]
     public float clickDistanceThreshold = 999f; // max distance to consider, 999 = always pick closest
 
     [Header("Undo/Redo Buttons")]
     public SpriteRenderer undoButton;
-    public SpriteRenderer redoButton;
 
     private SpriteRenderer spriteRenderer;
     private Transform[] squares;
@@ -25,6 +25,8 @@ public class VRCursor : MonoBehaviour
     [Header("Cursor Calibration")]
     public float cursorOffsetY = 0f; // tune this in Inspector at runtime
     public float cursorOffsetX = 0f; // in case X also drifts
+
+    
 
     private void Awake()
     {
@@ -61,8 +63,10 @@ public class VRCursor : MonoBehaviour
 
         Vector2 mouseScreen = Mouse.current.position.ReadValue();
 
-        // Use camera unproject — same as the painter does
+        //// Use camera unproject — same as the painter does
         Camera cam = Camera.main;
+        //transform.position = cam.ScreenToWorldPoint(
+        //    new Vector3(mouseScreen.x, mouseScreen.y, uiManager.rxRayImageCanvas.transform.position.z));
         float cursorWorldZ = transform.position.z;
         float camDepth = cam.WorldToScreenPoint(new Vector3(0, 0, cursorWorldZ)).z;
         Vector3 worldPoint = cam.ScreenToWorldPoint(
@@ -75,19 +79,24 @@ public class VRCursor : MonoBehaviour
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            if (IsCursorOverImage() || IsCursorOverButton())
+            if (IsCursorOverButton(out string buttonName))
             {
-                // Do nothing
+                if (buttonName == "Undo") cursorPainter?.Undo();
+            }
+            else if (IsCursorOverImage())
+            {
+                // painting handled by VRCursorPainter
             }
             else
             {
-                SnapToClosestSquare();
+                TryPickColorUnderCursor();
             }
         }
     }
 
-    private bool IsCursorOverButton()
+    private bool IsCursorOverButton(out string buttonName)
     {
+        buttonName = null;
         Vector2 cursorXY = new Vector2(transform.position.x, transform.position.y);
 
         if (undoButton != null && undoButton.gameObject.activeInHierarchy)
@@ -95,15 +104,10 @@ public class VRCursor : MonoBehaviour
             Bounds b = undoButton.bounds;
             if (cursorXY.x >= b.min.x && cursorXY.x <= b.max.x &&
                 cursorXY.y >= b.min.y && cursorXY.y <= b.max.y)
+            {
+                buttonName = "Undo";
                 return true;
-        }
-
-        if (redoButton != null && redoButton.gameObject.activeInHierarchy)
-        {
-            Bounds b = redoButton.bounds;
-            if (cursorXY.x >= b.min.x && cursorXY.x <= b.max.x &&
-                cursorXY.y >= b.min.y && cursorXY.y <= b.max.y)
-                return true;
+            }
         }
 
         return false;
@@ -132,42 +136,30 @@ public class VRCursor : MonoBehaviour
         return false;
     }
 
-    private void SnapToClosestSquare()
+    private void TryPickColorUnderCursor()
     {
         if (squares == null || squares.Length == 0) return;
 
-        Transform closest = null;
-        float closestDist = float.MaxValue;
-        Vector3 cursorPos = transform.position;
+        Vector2 cursorXY = new Vector2(transform.position.x, transform.position.y);
 
         foreach (Transform sq in squares)
         {
-            Vector2 cursorXY = new Vector2(cursorPos.x, cursorPos.y);
-            Vector2 squareXY = new Vector2(sq.position.x, sq.position.y);
-            float dist = Vector2.Distance(cursorXY, squareXY);
+            SpriteRenderer squareSR = sq.GetComponent<SpriteRenderer>();
+            if (squareSR == null) continue;
 
-            if (dist < closestDist)
+            Bounds b = squareSR.bounds;
+            if (cursorXY.x >= b.min.x && cursorXY.x <= b.max.x &&
+                cursorXY.y >= b.min.y && cursorXY.y <= b.max.y)
             {
-                closestDist = dist;
-                closest = sq;
+                Color squareColor = squareSR.color != Color.white
+                    ? squareSR.color
+                    : squareSR.sharedMaterial.color;
+
+                lastSquareColor = squareColor;
+                spriteRenderer.color = lastSquareColor;
+                Debug.Log($"[VRCursor] Color picked from {sq.name}: {lastSquareColor}");
+                return;
             }
-        }
-
-        if (closest == null) return;
-
-        transform.position = new Vector3(closest.position.x, closest.position.y, transform.position.z);
-
-        SpriteRenderer squareSR = closest.GetComponent<SpriteRenderer>();
-        if (squareSR != null && spriteRenderer != null)
-        {
-            // Try SpriteRenderer.color first, fall back to material color
-            Color squareColor = squareSR.color != Color.white
-                ? squareSR.color
-                : squareSR.sharedMaterial.color;
-
-            lastSquareColor = squareColor;
-            spriteRenderer.color = lastSquareColor;
-            Debug.Log($"[VRCursor] Snapped to {closest.name}, color: {lastSquareColor}");
         }
     }
 }

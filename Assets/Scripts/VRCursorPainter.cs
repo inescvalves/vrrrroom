@@ -24,7 +24,13 @@ public class VRCursorPainter : MonoBehaviour
 
     private List<string> csvRows = new List<string>();
 
-    // Color hex → label mapping
+    // Using standard Stack classes makes state management much cleaner and less bug-prone than LinkedLists
+    private Stack<(Color[] pixels, List<string> rows)> undoStack = new Stack<(Color[], List<string>)>();
+
+    private const int MaxUndoSteps = 30;
+    private bool isStrokeInProgress = false;
+    private List<string> currentStrokeRows = new List<string>();
+
     private static readonly Dictionary<string, string> ColorLabels = new Dictionary<string, string>
     {
         { "8B0000", "Airway wall thickening" },
@@ -52,18 +58,11 @@ public class VRCursorPainter : MonoBehaviour
 
     private void Update()
     {
-        if (uiManager == null)
-        {
-            Debug.LogWarning("[VRCursorPainter] uiManager is null!");
-            return;
-        }
-
-        Debug.Log($"[VRCursorPainter] isOnEllipseScreen: {uiManager.isOnEllipseScreen}");
+        if (uiManager == null) return;
 
         // Reset drawing when leaving ellipse screen
         if (uiManager.trialResultsScreenCanvas.activeSelf)
         {
-            Debug.Log($"[VRCursorPainter] Leaving ellipse screen. Rows collected: {csvRows.Count}");
             WriteCSV();
             ResetPainting();
         }
@@ -72,20 +71,49 @@ public class VRCursorPainter : MonoBehaviour
         if (!uiManager.isOnEllipseScreen) return;
         if (Mouse.current == null) return;
 
+        // 1. CRITICAL GUARD: Check if the mouse is clicking on a UI element (Buttons, Canvases, etc.)
+        if (UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            // If they release the mouse over a button, make sure we safely close any pending stroke without saving it
+            if (Mouse.current.leftButton.wasReleasedThisFrame && isStrokeInProgress)
+            {
+                CommitStroke();
+            }
+            return; // EXIT EARLY. Do not paint, do not pass go.
+        }
+
+        // 2. Normal Painting Input Processing
         if (Mouse.current.leftButton.isPressed)
         {
-            Debug.Log("[VRCursorPainter] Left button pressed, calling TryPaint.");
             TryPaint();
         }
+
+        if (Mouse.current.leftButton.wasReleasedThisFrame && isStrokeInProgress)
+        {
+            CommitStroke();
+        }
+    }
+
+    void CommitStroke()
+    {
+        isStrokeInProgress = false;
+        if (currentStrokeRows.Count == 0) return;
+
+        // Correctly update the placeholder row list we pushed at the start of the stroke
+        if (undoStack.Count > 0)
+        {
+            var last = undoStack.Pop();
+            undoStack.Push((last.pixels, new List<string>(currentStrokeRows)));
+        }
+
+        csvRows.AddRange(currentStrokeRows);
+        currentStrokeRows.Clear();
     }
 
     void TryPaint()
     {
-        if (uiManager.rxRayImagesParent == null)
-        {
-            Debug.LogWarning("[VRCursorPainter] rxRayImagesParent is null!");
-            return;
-        }
+        if (uiManager.rxRayImagesParent == null) return;
 
         SpriteRenderer targetSR = null;
         foreach (Transform child in uiManager.rxRayImagesParent)
@@ -95,16 +123,19 @@ public class VRCursorPainter : MonoBehaviour
             if (sr != null) { targetSR = sr; break; }
         }
 
-        if (targetSR == null)
-        {
-            Debug.LogWarning("[VRCursorPainter] No active SpriteRenderer found in rxRayImagesParent!");
-            return;
-        }
-
+        if (targetSR == null) return;
         if (targetSR != activeImageRenderer) SetupPaintTexture(targetSR);
 
-        Camera cam = Camera.main;
+        // This block is now perfectly safe because the UI guard above blocks button clicks
+        if (Mouse.current.leftButton.wasPressedThisFrame && !isStrokeInProgress)
+        {
+            isStrokeInProgress = true;
+            currentStrokeRows.Clear();
+            SaveUndoSnapshot();
+        }
+
         Vector2 mouseScreen = Mouse.current.position.ReadValue();
+        Camera cam = Camera.main;
         float imageWorldZ = targetSR.transform.position.z;
         float camSpaceZ = cam.WorldToScreenPoint(new Vector3(0, 0, imageWorldZ)).z;
         Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, camSpaceZ));
@@ -113,13 +144,7 @@ public class VRCursorPainter : MonoBehaviour
         float nx = (worldPoint.x - bounds.min.x) / (bounds.max.x - bounds.min.x);
         float ny = (worldPoint.y - bounds.min.y) / (bounds.max.y - bounds.min.y);
 
-        Debug.Log($"[VRCursorPainter] nx:{nx:F3} ny:{ny:F3}");
-
-        if (nx < 0 || nx > 1 || ny < 0 || ny > 1)
-        {
-            Debug.LogWarning($"[VRCursorPainter] Out of bounds! nx:{nx:F3} ny:{ny:F3}");
-            return;
-        }
+        if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
 
         Color paintColor = Color.white;
         if (vrCursor != null)
@@ -128,13 +153,8 @@ public class VRCursorPainter : MonoBehaviour
             if (cursorSR != null) paintColor = cursorSR.color;
         }
 
-        Debug.Log($"[VRCursorPainter] paintColor: {paintColor}");
         ColorUtility.TryParseHtmlString("#C0C0C0", out Color targetColor);
-        if (paintColor == targetColor)
-        {
-            Debug.LogWarning("[VRCursorPainter] Paint color is white — skipping. Select a color first!");
-            return;
-        }
+        if (paintColor == targetColor) return;
 
         int px = Mathf.RoundToInt(nx * paintTexture.width);
         int py = Mathf.RoundToInt(ny * paintTexture.height);
@@ -147,8 +167,10 @@ public class VRCursorPainter : MonoBehaviour
         string timestamp = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
         string imageName = targetSR.gameObject.name;
 
-        csvRows.Add($"{timestamp},{imageName},{nx},{ny},{hex},{label}");
-        Debug.Log($"[VRCursorPainter] Row added. Total rows: {csvRows.Count}");
+        string normXStr = nx.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+        string normYStr = ny.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+
+        currentStrokeRows.Add($"{timestamp},{imageName},{normXStr},{normYStr},{hex},{label}");
     }
 
     void PaintCircle(int cx, int cy, Color color)
@@ -161,8 +183,7 @@ public class VRCursorPainter : MonoBehaviour
                 {
                     int px = cx + x;
                     int py = cy + y;
-                    if (px >= 0 && px < paintTexture.width &&
-                        py >= 0 && py < paintTexture.height)
+                    if (px >= 0 && px < paintTexture.width && py >= 0 && py < paintTexture.height)
                         paintTexture.SetPixel(px, py, color);
                 }
             }
@@ -196,35 +217,29 @@ public class VRCursorPainter : MonoBehaviour
         paintTexture = null;
         activeImageRenderer = null;
         originalSprite = null;
+        undoStack.Clear();
+        currentStrokeRows.Clear();
+        csvRows.Clear();
+        isStrokeInProgress = false;
     }
-
-    // ── CSV ────────────────────────────────────────────────────────────────────
 
     void WriteCSV()
     {
-        if (csvRows.Count == 0)
-        {
-            Debug.LogWarning("[VRCursorPainter] No rows to write.");
-            return;
-        }
+        if (csvRows.Count == 0) return;
 
         EnsureOutputFolder();
-
         string userID = ResolveUserID();
         string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string path = Path.Combine(OutputFolder(), $"{userID}_painting_{timestamp}.csv");
 
-        Debug.Log($"[VRCursorPainter] Writing {csvRows.Count} rows to: {path}");
-
         try
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Timestamp,ImageName,PixelX,PixelY,ColorHex,Label");
+            sb.AppendLine("Timestamp,ImageName,NormalizedX,NormalizedY,ColorHex,Label");
             foreach (string row in csvRows)
                 sb.AppendLine(row);
 
             File.WriteAllText(path, sb.ToString());
-            Debug.Log($"[VRCursorPainter] CSV written successfully.");
         }
         catch (System.Exception e)
         {
@@ -258,11 +273,47 @@ public class VRCursorPainter : MonoBehaviour
         CSVLogger logger = FindFirstObjectByType<CSVLogger>();
         if (logger != null && !string.IsNullOrWhiteSpace(logger.userID))
         {
-            Debug.Log($"[VRCursorPainter] Found userID: {logger.userID}");
             return logger.userID.Trim();
         }
-
-        Debug.LogWarning("[VRCursorPainter] CSVLogger not found or userID empty, using fallback.");
         return fallbackUserID;
+    }
+
+    void SaveUndoSnapshot()
+    {
+        if (paintTexture == null) return;
+
+        // Cap old undo steps using a temporary list representation to manage sizes cleanly
+        undoStack.Push((paintTexture.GetPixels(), new List<string>()));
+
+        if (undoStack.Count > MaxUndoSteps)
+        {
+            var items = new List<(Color[], List<string>)>(undoStack);
+            items.RemoveAt(items.Count - 1); // Drop the oldest item
+            items.Reverse();
+            undoStack = new Stack<(Color[], List<string>)>(items);
+        }
+    }
+
+    public void Undo()
+    {
+        if (isStrokeInProgress)
+        {
+            isStrokeInProgress = false;
+            currentStrokeRows.Clear();
+        }
+
+        if (undoStack.Count == 0 || paintTexture == null) return;
+
+        var undoEntry = undoStack.Pop();
+
+        Color[] postPixels = paintTexture.GetPixels();
+
+        // Safely strip the row counts recorded during this undone frame block
+        int removeCount = undoEntry.rows.Count;
+        if (removeCount > 0 && csvRows.Count >= removeCount)
+            csvRows.RemoveRange(csvRows.Count - removeCount, removeCount);
+
+        paintTexture.SetPixels(undoEntry.pixels);
+        paintTexture.Apply();
     }
 }
