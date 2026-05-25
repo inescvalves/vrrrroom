@@ -251,6 +251,8 @@ public class VRCursorPainter : MonoBehaviour
                 sb.AppendLine(row);
 
             File.WriteAllText(path, sb.ToString());
+            //Run the ellipse estimator script right after writing the raw file
+            EllipseEstimator.ProcessDrawingToEllipses(path);
         }
         catch (System.Exception e)
         {
