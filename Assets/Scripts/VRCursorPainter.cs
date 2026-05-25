@@ -71,19 +71,30 @@ public class VRCursorPainter : MonoBehaviour
         if (!uiManager.isOnEllipseScreen) return;
         if (Mouse.current == null) return;
 
-        // 1. CRITICAL GUARD: Check if the mouse is clicking on a UI element (Buttons, Canvases, etc.)
+        // 1. CRITICAL GUARD (Standard UI Elements): Check if the mouse is clicking on a regular UI element
         if (UnityEngine.EventSystems.EventSystem.current != null &&
             UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
-            // If they release the mouse over a button, make sure we safely close any pending stroke without saving it
             if (Mouse.current.leftButton.wasReleasedThisFrame && isStrokeInProgress)
             {
                 CommitStroke();
             }
-            return; // EXIT EARLY. Do not paint, do not pass go.
+            return; // EXIT EARLY.
         }
 
-        // 2. Normal Painting Input Processing
+        // 2. CRITICAL GUARD (World Sprites): Check if cursor is over your custom Undo SpriteRenderer button
+        if (vrCursor != null && vrCursor.IsCursorOverUndoButton())
+        {
+            // If they release the mouse here, clear stroke without polluting snapshots
+            if (Mouse.current.leftButton.wasReleasedThisFrame && isStrokeInProgress)
+            {
+                isStrokeInProgress = false;
+                currentStrokeRows.Clear();
+            }
+            return; // EXIT EARLY. Do not paint over or snapshot while clicking the Undo asset.
+        }
+
+        // 3. Normal Painting Input Processing
         if (Mouse.current.leftButton.isPressed)
         {
             TryPaint();

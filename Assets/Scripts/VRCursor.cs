@@ -79,9 +79,9 @@ public class VRCursor : MonoBehaviour
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            if (IsCursorOverButton(out string buttonName))
+            if (IsCursorOverUndoButton())
             {
-                if (buttonName == "Undo") cursorPainter?.Undo();
+                cursorPainter?.Undo();
             }
             else if (IsCursorOverImage())
             {
@@ -94,23 +94,17 @@ public class VRCursor : MonoBehaviour
         }
     }
 
-    private bool IsCursorOverButton(out string buttonName)
+    public bool IsCursorOverUndoButton()
     {
-        buttonName = null;
+        if (undoButton == null || !undoButton.gameObject.activeInHierarchy)
+            return false;
+
         Vector2 cursorXY = new Vector2(transform.position.x, transform.position.y);
+        Bounds bounds = undoButton.bounds;
 
-        if (undoButton != null && undoButton.gameObject.activeInHierarchy)
-        {
-            Bounds b = undoButton.bounds;
-            if (cursorXY.x >= b.min.x && cursorXY.x <= b.max.x &&
-                cursorXY.y >= b.min.y && cursorXY.y <= b.max.y)
-            {
-                buttonName = "Undo";
-                return true;
-            }
-        }
-
-        return false;
+        // Check if the cursor position is currently inside the Undo Sprite Renderer bounds
+        return (cursorXY.x >= bounds.min.x && cursorXY.x <= bounds.max.x &&
+                cursorXY.y >= bounds.min.y && cursorXY.y <= bounds.max.y);
     }
 
     private bool IsCursorOverImage()

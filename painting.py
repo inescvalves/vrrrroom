@@ -3,7 +3,7 @@ import cv2
 import pandas as pd
 
 # --- CONFIGURATION ---
-CSV_PATH = "PaintingData/0_painting_20260525_135424.csv"  # Path to your uploaded CSV
+CSV_PATH = "PaintingData/0_painting_20260525_181527.csv"  # Path to your uploaded CSV
 IMAGE_FOLDER = "Assets/RX-Ray Images"  # Change to your actual images folder
 OUTPUT_FOLDER = "./annotated_images"  # Where the marked images will be saved
 RADIUS = 25  # Size of the coordinate point
