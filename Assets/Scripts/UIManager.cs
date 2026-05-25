@@ -132,12 +132,17 @@ public class UIManager : MonoBehaviour
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (scroll != 0f)
             {
-                Debug.Log($"[Scroll] raw={scroll} | currentZ={rxRayImageCanvas.transform.position.z:F3} | min={rxRayZMin} | max={calibrationManager.distanceFromHead}");
                 float newZ = rxRayImageCanvas.transform.position.z + scroll * rxRayZScrollSpeed;
                 newZ = Mathf.Clamp(newZ, rxRayZMin, calibrationManager.distanceFromHead);
-                Debug.Log($"[Scroll] newZ={newZ:F3}");
-                UpdateRxRayCanvasZ(newZ);
+                float smoothedZ = Mathf.Lerp(
+                    rxRayImageCanvas.transform.position.z,
+                    newZ,
+                    10f * Time.deltaTime
+                );
+                UpdateRxRayCanvasZ(smoothedZ);
             }
+
+
 
             if (rightPressed)
             {
@@ -208,8 +213,6 @@ public class UIManager : MonoBehaviour
 
         Vector3 pos = rxRayImageCanvas.transform.position;
         rxRayImageCanvas.transform.position = new Vector3(pos.x, pos.y, newZ);
-
-        Debug.Log($"[UIManager] rxRayImageCanvas Z updated to: {newZ:F2}");
 
         // Refresh sprite bounds and cursor squares after move
         RefreshCurrentImagePosition();
