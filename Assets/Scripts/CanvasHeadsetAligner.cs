@@ -7,7 +7,7 @@ public class CanvasHeadsetAligner : MonoBehaviour
 {
     [Header("Placement")]
     [Range(0.3f, 5f)]
-    private float distanceFromHead;
+    public float distanceFromHead;
 
     [Range(-1f, 1f)]
     public float verticalOffset = 0f;
@@ -49,6 +49,16 @@ public class CanvasHeadsetAligner : MonoBehaviour
             StartCoroutine(AlignOnStartup());
     }
 
+    private void OnEnable()
+    {
+        if (PlayerPrefs.HasKey("CalibratedDistance"))
+        {
+            float savedDistance = PlayerPrefs.GetFloat("CalibratedDistance");
+            SetDistanceFromHead(savedDistance);
+        }
+        SnapToHeadset();
+    }
+
     private IEnumerator AlignOnStartup()
     {
         yield return new WaitForSeconds(startupDelay);
@@ -60,14 +70,20 @@ public class CanvasHeadsetAligner : MonoBehaviour
             yield return null;
         }
 
-        // Disable the GameObject before snapping so the jump is never rendered
-        gameObject.SetActive(false);
+        _canvas.enabled = false;
         SnapToHeadset();
-        gameObject.SetActive(true);
+        _canvas.enabled = true;
     }
 
     private void SnapToHeadset()
     {
+        if (_cam == null) _cam = Camera.main;
+        if (_cam == null)
+        {
+            Debug.LogError("[CanvasHeadsetAligner] SnapToHeadset: no camera found, aborting.");
+            return;
+        }
+
         transform.position = TargetPosition();
         transform.rotation = TargetRotation();
     }
@@ -91,9 +107,27 @@ public class CanvasHeadsetAligner : MonoBehaviour
         return Quaternion.LookRotation(camForwardFlat.normalized, Vector3.up);
     }
 
+    // Call this specifically when the user forces a calibration update
+    public void RecenterInstant(float newDistance)
+    {
+        StopAllCoroutines();
+        distanceFromHead = newDistance;
+
+        // Temporarily force enable to ensure transform updates, snap, then restore
+        SnapToHeadset();
+    }
+
     public void Recenter()
     {
         StopAllCoroutines();
+
+        if (!gameObject.activeInHierarchy)
+        {
+            // Object is inactive — snap immediately without a coroutine
+            SnapToHeadset();
+            return;
+        }
+
         StartCoroutine(AlignOnStartup());
     }
 
@@ -102,26 +136,26 @@ public class CanvasHeadsetAligner : MonoBehaviour
         distanceFromHead = distance;
     }
 
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        var cam = GetComponent<Canvas>()?.worldCamera ?? Camera.main;
-        if (cam == null) return;
+//#if UNITY_EDITOR
+//    private void OnDrawGizmosSelected()
+//    {
+//        var cam = GetComponent<Canvas>()?.worldCamera ?? Camera.main;
+//        if (cam == null) return;
 
-        Vector3 target = cam.transform.position
-                       + cam.transform.forward * distanceFromHead
-                       + Vector3.up * verticalOffset;
+//        Vector3 target = cam.transform.position
+//                       + cam.transform.forward * distanceFromHead
+//                       + Vector3.up * verticalOffset;
 
-        Gizmos.color = new Color(0f, 1f, 1f, 0.8f);
-        Gizmos.DrawWireSphere(target, 0.04f);
-        Gizmos.DrawLine(cam.transform.position, target);
+//        Gizmos.color = new Color(0f, 1f, 1f, 0.8f);
+//        Gizmos.DrawWireSphere(target, 0.04f);
+//        Gizmos.DrawLine(cam.transform.position, target);
 
-        float w = 780f * 0.002f;
-        float h = GetComponent<RectTransform>().rect.height * 0.002f;
-        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
-        Gizmos.DrawWireCube(target, new Vector3(w, h == 0f ? 0.5f : h, 0.001f));
-    }
-#endif
+//        float w = 780f * 0.002f;
+//        float h = GetComponent<RectTransform>().rect.height * 0.002f;
+//        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+//        Gizmos.DrawWireCube(target, new Vector3(w, h == 0f ? 0.5f : h, 0.001f));
+//    }
+//#endif
 
     private static bool IsHeadsetTracked()
     {

@@ -13,7 +13,7 @@ public class HeadCalibrationManager : MonoBehaviour
     public Transform cameraTransform;
 
     [Header("Calibration Result UI")]
-    public TextMeshProUGUI calibrationResultText;
+    //public TextMeshProUGUI calibrationResultText;
 
     [Header("RX Image UI")]
     public GameObject imageRX;
@@ -95,21 +95,59 @@ public class HeadCalibrationManager : MonoBehaviour
 
     public float RecordDistance()
     {
-        float distance = Mathf.Abs(cameraTransform.position.z - imageRX.transform.position.z);
+        if (cameraTransform == null || imageRX == null)
+        {
+            Debug.LogError("[HeadCalibrationManager] Missing cameraTransform or imageRX references!");
+            return 1.5f;
+        }
 
+        // Default target position to the parent container
+        Vector3 targetImagePosition = imageRX.transform.position;
+
+        
+        Transform imagesFolder = imageRX.transform.Find("Images");
+        if (imagesFolder != null)
+        {
+            foreach (Transform child in imagesFolder)
+            {
+                if (child.gameObject.activeInHierarchy)
+                {
+                    targetImagePosition = child.position;
+                    Debug.Log($"[HeadCalibrationManager] Found active child image: {child.name} for measuring.");
+                    break;
+                }
+            }
+        }
+
+        // Calculate true 3D straight-line distance instead of strict Z-axis delta
+        float distance = Vector3.Distance(cameraTransform.position, targetImagePosition);
+
+        // Save to disk
         PlayerPrefs.SetFloat("CalibratedDistance", distance);
         PlayerPrefs.Save();
-        Debug.Log($"RecordDistance() called — saved {distance}m to PlayerPrefs");
+        Debug.Log($"[HeadCalibrationManager] Calibrated distance measured: {distance:F2}m");
 
-        if (targetAligner != null)
+        // Force ALL Canvas Aligner scripts in the scene to update instantly
+        CanvasHeadsetAligner[] allAligners = Resources.FindObjectsOfTypeAll<CanvasHeadsetAligner>();
+        foreach (var aligner in allAligners)
         {
-            targetAligner.SetDistanceFromHead(distance);
-            targetAligner.Recenter();
+            aligner.SetDistanceFromHead(distance);
+            aligner.Recenter();
         }
-        else
-        {
-            Debug.LogWarning("HeadCalibrationManager: targetAligner is not assigned.");
-        }
+
+        // ?? Reposition RX-Ray Image to the new distance ??????????????????????
+        Vector3 camForwardFlat = new Vector3(
+            cameraTransform.forward.x, 0f, cameraTransform.forward.z).normalized;
+
+        Vector3 newPosition = cameraTransform.position + camForwardFlat * distance;
+
+        imageRX.transform.position = new Vector3(
+        imageRX.transform.position.x,
+        imageRX.transform.position.y,
+        newPosition.z);
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.UpdateRxRayCanvasZ(newPosition.z);
 
         return distance;
     }
@@ -151,12 +189,12 @@ public class HeadCalibrationManager : MonoBehaviour
         float forwardCm = Mathf.Abs(forwardZ - baseZ) * 100f;
         float backwardCm = Mathf.Abs(backwardZ - baseZ) * 100f;
 
-        if (calibrationResultText != null)
-        {
-            calibrationResultText.text =
-                $"<color=\"yellow\">{forwardCm:F1}</color> cm forward\n" +
-                $"<color=\"orange\">{backwardCm:F1}</color> cm backward";
-        }
+        //if (calibrationResultText != null)
+        //{
+        //    calibrationResultText.text =
+        //        $"<color=\"yellow\">{forwardCm:F1}</color> cm forward\n" +
+        //        $"<color=\"orange\">{backwardCm:F1}</color> cm backward";
+        //}
 
         Debug.Log($"Calibration Results — Forward: {forwardCm:F1} cm | Backward: {backwardCm:F1} cm");
     }

@@ -34,7 +34,7 @@ public class UIManager : MonoBehaviour
     public bool pauseBetweenModalities;
 
     [Header("Managers")]
-    public HeadCalibrationManager calibrationManager;
+    public CanvasHeadsetAligner calibrationManager;
 
     private GameObject[] panels;
     private int currentIndex = 0;
@@ -57,6 +57,11 @@ public class UIManager : MonoBehaviour
     public Transform vrCursorRect;
     private GameObject vrCursorInstance;
     private Camera mainCamera;
+
+    private EyeCalibration eyeCalibration;
+
+    private float rxRayZMin = 1f;
+    private float rxRayZScrollSpeed = 120f;
 
 
     // -------------------------------------------------------
@@ -92,6 +97,9 @@ public class UIManager : MonoBehaviour
         panels[0].SetActive(true);
         currentIndex = 0;
         vrCursorRect.gameObject.SetActive(false);
+
+        eyeCalibration = FindFirstObjectByType<EyeCalibration>();
+        
     }
 
     private void Update()
@@ -101,6 +109,10 @@ public class UIManager : MonoBehaviour
 
         bool rightPressed = Mouse.current.rightButton.wasPressedThisFrame;
         bool leftPressed = Mouse.current.leftButton.wasPressedThisFrame;
+
+        // Block right-click while eye calibration is still running
+        if (eyeCalibration != null && !eyeCalibration.finished && eyeCalibration.imageRXRay.activeSelf)
+            rightPressed = false;
 
         if (isOnEllipseScreen)
             UpdateVRCursor();
@@ -112,12 +124,28 @@ public class UIManager : MonoBehaviour
         }
         else if (isOnAnalysisConfirmationScreen)
         {
-            if (rightPressed) { isOnEllipseScreen = true; GoBackToPrevImage(); }
+            if (rightPressed) { UpdateRxRayCanvasZ(calibrationManager.distanceFromHead); isOnEllipseScreen = true; GoBackToPrevImage(); }
             else if (leftPressed) { isOnEllipseScreen = false; GoBackToPrevImage(); }
         }
         else if (isOnRxRayScreen && isOnEllipseScreen)
         {
-            if (rightPressed) { vrCursorRect.gameObject.SetActive(false); StartCoroutine(FadeToConfirmation()); }
+            float scroll = Mouse.current.scroll.ReadValue().y;
+            if (scroll != 0f)
+            {
+                Debug.Log($"[Scroll] raw={scroll} | currentZ={rxRayImageCanvas.transform.position.z:F3} | min={rxRayZMin} | max={calibrationManager.distanceFromHead}");
+                float newZ = rxRayImageCanvas.transform.position.z + scroll * rxRayZScrollSpeed;
+                newZ = Mathf.Clamp(newZ, rxRayZMin, calibrationManager.distanceFromHead);
+                Debug.Log($"[Scroll] newZ={newZ:F3}");
+                UpdateRxRayCanvasZ(newZ);
+            }
+
+            if (rightPressed)
+            {
+                vrCursorRect.gameObject.SetActive(false);
+                StartCoroutine(FadeToConfirmation());
+                UpdateRxRayCanvasZ(calibrationManager.distanceFromHead);
+            }   
+
         }
         else if (isOnRxRayScreen && !isOnEllipseScreen)
         {
@@ -152,6 +180,39 @@ public class UIManager : MonoBehaviour
         // Convert local canvas point to world position, slightly in front of canvas
         Vector3 worldPoint = canvas.transform.TransformPoint(new Vector3(localPoint.x, localPoint.y, 0f));
         vrCursorRect.transform.position = worldPoint + canvas.transform.forward * -0.01f;
+    }
+
+    public void RefreshCurrentImagePosition()
+    {
+        if (rxRayImagesParent == null) return;
+
+        foreach (Transform child in rxRayImagesParent)
+        {
+            if (!child.gameObject.activeInHierarchy) continue;
+
+            SpriteRenderer sr = child.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.enabled = false;
+                sr.enabled = true;
+            }
+        }
+
+        VRCursor cursor = FindFirstObjectByType<VRCursor>();
+        cursor?.RefreshSquares();
+    }
+
+    public void UpdateRxRayCanvasZ(float newZ)
+    {
+        if (rxRayImageCanvas == null) return;
+
+        Vector3 pos = rxRayImageCanvas.transform.position;
+        rxRayImageCanvas.transform.position = new Vector3(pos.x, pos.y, newZ);
+
+        Debug.Log($"[UIManager] rxRayImageCanvas Z updated to: {newZ:F2}");
+
+        // Refresh sprite bounds and cursor squares after move
+        RefreshCurrentImagePosition();
     }
 
     // -------------------------------------------------------
