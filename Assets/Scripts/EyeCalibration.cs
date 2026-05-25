@@ -58,7 +58,7 @@ public class EyeCalibration : MonoBehaviour
 
     private List<string> csvRows = new List<string>();
     private int savedCount = 0;
-    private bool finished = false;
+    public bool finished = false;
     private string resolvedUserID;
 
     private static readonly string[] QuadrantNames =
