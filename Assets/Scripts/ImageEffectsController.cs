@@ -7,6 +7,8 @@ public class ImageEffectsController : MonoBehaviour
     [Header("References")]
     public Transform rxRayImageRoot;
 
+    public UIManager uiManager;
+
     [Header("Luminance Settings")]
     [Range(0.0001f, 0.1f)] public float mouseSensitivity = 0.01f;
     [Range(0f, 1f)] public float minLuminance = 0f;
@@ -49,7 +51,10 @@ public class ImageEffectsController : MonoBehaviour
 
     private void Update()
     {
-        if (UIManager.Instance != null && UIManager.Instance.isOnEllipseScreen) return;
+        if (UIManager.Instance != null && UIManager.Instance.isOnEllipseScreen) {
+            ResetAdjustments();
+            return;
+        }
         var mouse = Mouse.current;
         var keyboard = Keyboard.current;
         if (mouse == null) return;
