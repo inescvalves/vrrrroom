@@ -36,6 +36,14 @@ public class UIManager : MonoBehaviour
     [Header("Managers")]
     public CanvasHeadsetAligner calibrationManager;
 
+    public GameObject analysisText;
+    public GameObject diagnosisText;
+    public GameObject headCalibrationText;
+    public GameObject eyeCalibrationText;
+
+    public GameObject eyeCalibrationCanvas;
+    public GameObject headCalibrationCanvas;
+
     private GameObject[] panels;
     private int currentIndex = 0;
     private bool isTransitioning = false;
@@ -99,7 +107,13 @@ public class UIManager : MonoBehaviour
         vrCursorRect.gameObject.SetActive(false);
 
         eyeCalibration = FindFirstObjectByType<EyeCalibration>();
-        
+        if (training)
+        {
+            diagnosisText.SetActive(false);
+            analysisText.SetActive(false);
+            headCalibrationText.SetActive(false);
+            eyeCalibrationText.SetActive(false);
+        }
     }
 
     private void Update()
@@ -119,27 +133,48 @@ public class UIManager : MonoBehaviour
 
         if (isOnConfirmationScreen)
         {
+            if (training)
+            {
+                diagnosisText.SetActive(false);
+                analysisText.SetActive(false);
+                headCalibrationText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             if (rightPressed) { isOnEllipseScreen = false; ConfirmNextImage(); }
             else if (leftPressed) StartCoroutine(GoBackToEllipseRoutine());
         }
         else if (isOnAnalysisConfirmationScreen)
         {
+            if (training)
+            {
+                diagnosisText.SetActive(false);
+                analysisText.SetActive(false);
+                headCalibrationText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             if (rightPressed) { UpdateRxRayCanvasZ(calibrationManager.distanceFromHead); isOnEllipseScreen = true; GoBackToPrevImage(); }
             else if (leftPressed) { isOnEllipseScreen = false; GoBackToPrevImage(); }
         }
         else if (isOnRxRayScreen && isOnEllipseScreen)
         {
+            if (training)
+            {
+                diagnosisText.SetActive(true);
+                analysisText.SetActive(false);
+                headCalibrationText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (scroll != 0f)
             {
                 float newZ = rxRayImageCanvas.transform.position.z + scroll * rxRayZScrollSpeed;
                 newZ = Mathf.Clamp(newZ, rxRayZMin, calibrationManager.distanceFromHead);
-                float smoothedZ = Mathf.Lerp(
-                    rxRayImageCanvas.transform.position.z,
-                    newZ,
-                    10f * Time.deltaTime
-                );
-                UpdateRxRayCanvasZ(smoothedZ);
+                //float smoothedZ = Mathf.Lerp(
+                //    rxRayImageCanvas.transform.position.z,
+                //    newZ,
+                //    10f * Time.deltaTime
+                //);
+                UpdateRxRayCanvasZ(newZ);
             }
 
 
@@ -154,14 +189,53 @@ public class UIManager : MonoBehaviour
         }
         else if (isOnRxRayScreen && !isOnEllipseScreen)
         {
+
+            if (training && !eyeCalibrationCanvas.activeSelf)
+            {
+                if(headCalibrationCanvas.activeSelf)
+                {
+                    headCalibrationText.SetActive(true);
+                    diagnosisText.SetActive(false);
+                    analysisText.SetActive(false);
+                    eyeCalibrationText.SetActive(false);
+                }
+                else
+                {
+                    headCalibrationText.SetActive(false);
+                    diagnosisText.SetActive(false);
+                    analysisText.SetActive(true);
+                    eyeCalibrationText.SetActive(false);
+                }
+            }
+            else if (training && eyeCalibrationCanvas.activeSelf)
+            {
+                headCalibrationText.SetActive(false);
+                diagnosisText.SetActive(false);
+                analysisText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             if (rightPressed) ShowNextImage();
         }
         else if (isOnPauseScreen)
         {
+            if (training)
+            {
+                headCalibrationText.SetActive(false);
+                diagnosisText.SetActive(false);
+                analysisText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             if (rightPressed) StartCoroutine(ResumeFromPause());
         }
         else
         {
+            if (training)
+            {
+                headCalibrationText.SetActive(false);
+                diagnosisText.SetActive(false);
+                analysisText.SetActive(false);
+                eyeCalibrationText.SetActive(false);
+            }
             if (rightPressed) GoToNext();
         }
     }
@@ -286,6 +360,7 @@ public class UIManager : MonoBehaviour
             GetOrAddCanvasGroup(shuffledImages[0]).alpha = 1f;
         }
 
+        Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
         Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
         firstImageShown = false;
     }

@@ -28,6 +28,8 @@ public class CSVLogger : MonoBehaviour
     public RectTransform eyeGaze;
     public GameObject headPosition;
 
+    public UIManager uiManager;
+
     private float zoomIn;
     private float zoomOut;
     private float calibrationReset;
@@ -164,7 +166,7 @@ public class CSVLogger : MonoBehaviour
             float windowLevel = imageEffectsController.GetWindowLevel();
             float windowWidth = imageEffectsController.GetWindowWidth();
 
-            if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1)
+            if (activeImage != "None" && normalizationEyeGazeX >= 0 && normalizationEyeGazeX <= 1 && normalizationEyeGazeY >= 0 && normalizationEyeGazeY <= 1 && uiManager.isOnEllipseScreen == false)
             {
                 string line = $"{userID},{wallTime},{sessionTime},{activeImage},{windowLevel}," +
                     $"{windowWidth},{zoomIn},{zoomOut},{headPosX},{headPosY},{headPosZ}," +
@@ -203,7 +205,7 @@ public class CSVLogger : MonoBehaviour
                 normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
                 normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
 
-                Debug.Log("Image:" + ActiveImage.name + ", xminShownImage:" + xminShownImage + ", xmaxShownImage:" + xmaxShownImage + ", yminShownImage:" + yminShownImage + ", " + ymaxShownImage);
+                Debug.Log("Image:" + ActiveImage.name + ", xminShownImage:" + xminShownImage + ", xmaxShownImage:" + xmaxShownImage + ", yminShownImage:" + yminShownImage + ", ymaxShownImage:" + ymaxShownImage);
 
                 normalizationCorrectedEyeGazeX = normalizationEyeGazeX - delta.Item1;
                 normalizationCorrectedEyeGazeY = normalizationEyeGazeY - delta.Item2;

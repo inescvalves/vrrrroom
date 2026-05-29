@@ -149,7 +149,7 @@ public class VRCursorPainter : MonoBehaviour
         Camera cam = Camera.main;
         float imageWorldZ = targetSR.transform.position.z;
         float camSpaceZ = cam.WorldToScreenPoint(new Vector3(0, 0, imageWorldZ)).z;
-        Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, camSpaceZ));
+        Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, imageWorldZ));
 
         Bounds bounds = targetSR.bounds;
         float nx = (worldPoint.x - bounds.min.x) / (bounds.max.x - bounds.min.x);

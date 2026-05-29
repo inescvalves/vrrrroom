@@ -67,15 +67,25 @@ public class VRCursor : MonoBehaviour
         Camera cam = Camera.main;
         //transform.position = cam.ScreenToWorldPoint(
         //    new Vector3(mouseScreen.x, mouseScreen.y, uiManager.rxRayImageCanvas.transform.position.z));
-        float cursorWorldZ = transform.position.z;
-        float camDepth = cam.WorldToScreenPoint(new Vector3(0, 0, cursorWorldZ)).z;
+
+        //float cursorWorldZ = transform.position.z;
+        //float camDepth = cam.WorldToScreenPoint(new Vector3(0, 0, cursorWorldZ)).z;
+        //Vector3 worldPoint = cam.ScreenToWorldPoint(
+        //    new Vector3(mouseScreen.x, mouseScreen.y, camDepth));
+
+        //transform.position = new Vector3(
+        //    worldPoint.x + cursorOffsetX,
+        //    worldPoint.y + cursorOffsetY,
+        //    cursorWorldZ);
+
+
         Vector3 worldPoint = cam.ScreenToWorldPoint(
-            new Vector3(mouseScreen.x, mouseScreen.y, camDepth));
+            new Vector3(mouseScreen.x, mouseScreen.y, spriteRenderer.transform.position.z));
 
         transform.position = new Vector3(
             worldPoint.x + cursorOffsetX,
             worldPoint.y + cursorOffsetY,
-            cursorWorldZ);
+            spriteRenderer.transform.position.z);
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
