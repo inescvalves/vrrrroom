@@ -25,8 +25,6 @@ public class ImageLuminanceController : MonoBehaviour
 
     private Color _originalColor;
 
-    // ── private ──────────────────────────────────────────────────────────────
-
     private float _currentLuminance;
     private Renderer _activeRenderer;
     private Transform _lastActiveImage;
@@ -36,11 +34,7 @@ public class ImageLuminanceController : MonoBehaviour
     private bool _mouseMoved;
     private bool _wasPressed;
 
-    // ── Public getter — remapped to 0-1 ──────────────────────────────────────
-
     public float GetWindowLevel() => _currentLuminance;
-
-    // ── Unity lifecycle ──────────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -54,37 +48,31 @@ public class ImageLuminanceController : MonoBehaviour
 
         if (mouse == null) return;
 
-        // 1. Hide/Lock Mouse on Click
-        if (mouse.leftButton.wasPressedThisFrame)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
+        // FIX: Removido o bloco que fazia CursorLockMode.Locked no clique esquerdo.
+        // No Quest standalone, bloquear o cursor no primeiro clique matava todo o input
+        // subsequente nos outros scripts (UIManager, VRCursorPainter, etc).
+        // O cursor é gerido exclusivamente pelo UIManager.SetEllipsesLegend().
 
-        // 2. Show Mouse on Escape
+        // Show Mouse on Escape (mantido para debug no editor)
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
 
-        if (Mouse.current == null) return;
-
-        bool isPressed = Mouse.current.leftButton.isPressed;
+        bool isPressed = mouse.leftButton.isPressed;
         bool wasPressed = _wasPressed;
         _wasPressed = isPressed;
 
-        // ── Button just pressed ───────────────────────────────────────────
         if (isPressed && !wasPressed)
         {
             _leftButtonPressTime = Time.time;
             _mouseMoved = false;
         }
 
-        // ── Button held — check for mouse movement ────────────────────────
         if (isPressed)
         {
-            float mouseDeltaY = Mouse.current.delta.y.ReadValue();
+            float mouseDeltaY = mouse.delta.y.ReadValue();
 
             if (!Mathf.Approximately(mouseDeltaY, 0f))
             {
@@ -100,23 +88,18 @@ public class ImageLuminanceController : MonoBehaviour
             }
         }
 
-        // ── Button just released ──────────────────────────────────────────
         if (!isPressed && wasPressed)
         {
             float holdDuration = Time.time - _leftButtonPressTime;
-
             bool isClick = !_mouseMoved && holdDuration <= clickThreshold;
 
             if (isClick)
             {
-                // Single click -> reset luminance
                 ResetLuminance();
                 Debug.Log("[Luminance] Reset to default.");
             }
         }
     }
-
-    // ── Luminance ────────────────────────────────────────────────────────────
 
     private void ApplyLuminanceToActiveImage()
     {
@@ -131,7 +114,7 @@ public class ImageLuminanceController : MonoBehaviour
             if (_activeRenderer != null)
             {
                 _activeMaterial = _activeRenderer.material;
-                _currentLuminance = defaultLuminance; // 0.5 = original appearance
+                _currentLuminance = defaultLuminance;
                 _originalColor = _activeMaterial.color;
             }
         }
@@ -144,19 +127,14 @@ public class ImageLuminanceController : MonoBehaviour
 
         if (_currentLuminance <= 0.5f)
         {
-            // 0.0 → 0.5 : Black → original color
             float t = _currentLuminance * 2f;
             float finalL = Mathf.Lerp(0f, originalL, t);
-
             _activeMaterial.color = HSLToRGB(hue, sat, finalL);
         }
         else
         {
-            // 0.5 → 1.0 : original color -> brighter (HDR multiply)
-            float t = (_currentLuminance - 0.5f) * 2f; // [0, 1]
-            float multiplier = Mathf.Lerp(1f, 4f, t);           // 1× → 4×
-
-            // HDR color — values above 1 make it visibly brighter
+            float t = (_currentLuminance - 0.5f) * 2f;
+            float multiplier = Mathf.Lerp(1f, 4f, t);
             _activeMaterial.color = _originalColor * multiplier;
         }
     }
@@ -167,35 +145,23 @@ public class ImageLuminanceController : MonoBehaviour
         ApplyLuminanceToActiveImage();
     }
 
-    // ── HSL ──────────────────────────────────────────────────────────────────
-
     private static void RGBToHSL(Color color, out float h, out float s, out float l)
     {
-        // Step 1: RGB → HSV using Unity's built-in
         Color.RGBToHSV(color, out float hHSV, out float sHSV, out float v);
-
-        // Step 2: HSV → HSL
-        h = hHSV;                              // Hue is identical in both models
-        l = v * (1f - sHSV / 2f);             // L = V * (1 - S_hsv / 2)
-
-        if (l <= 0f || l >= 1f)               // S_hsl = 0 if L == 0 or L == 1
+        h = hHSV;
+        l = v * (1f - sHSV / 2f);
+        if (l <= 0f || l >= 1f)
             s = 0f;
         else
-            s = (v - l) / Mathf.Min(l, 1f - l); // S_hsl = (V - L) / min(L, 1-L)
+            s = (v - l) / Mathf.Min(l, 1f - l);
     }
 
     private static Color HSLToRGB(float h, float s, float l)
     {
-        // HSL → HSV
         float v = l + s * Mathf.Min(l, 1f - l);
         float sHSV = v == 0f ? 0f : 2f * (1f - l / v);
-
         return Color.HSVToRGB(h, sHSV, v);
     }
-
-
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Transform GetActiveImageChild()
     {

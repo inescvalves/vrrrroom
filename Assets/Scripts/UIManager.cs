@@ -184,7 +184,7 @@ public class UIManager : MonoBehaviour
                 vrCursorRect.gameObject.SetActive(false);
                 StartCoroutine(FadeToConfirmation());
                 UpdateRxRayCanvasZ(calibrationManager.distanceFromHead);
-            }   
+            }
 
         }
         else if (isOnRxRayScreen && !isOnEllipseScreen)
@@ -192,7 +192,7 @@ public class UIManager : MonoBehaviour
 
             if (training && !eyeCalibrationCanvas.activeSelf)
             {
-                if(headCalibrationCanvas.activeSelf)
+                if (headCalibrationCanvas.activeSelf)
                 {
                     headCalibrationText.SetActive(true);
                     diagnosisText.SetActive(false);
@@ -361,7 +361,6 @@ public class UIManager : MonoBehaviour
         }
 
         Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
-        Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
         firstImageShown = false;
     }
 
@@ -397,7 +396,7 @@ public class UIManager : MonoBehaviour
         confirmCG.alpha = 0f;
         yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
 
-        
+
 
         isOnConfirmationScreen = true;
         isTransitioning = false;
@@ -420,7 +419,7 @@ public class UIManager : MonoBehaviour
         yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
 
         isOnAnalysisConfirmationScreen = true;
-        
+
 
         isTransitioning = false;
     }
@@ -428,7 +427,7 @@ public class UIManager : MonoBehaviour
     private IEnumerator GoBackToEllipseRoutine()
     {
         eyeTrackingDisc?.SetActive(false);
-        
+
         isTransitioning = true;
         isOnConfirmationScreen = false;
 
@@ -444,7 +443,7 @@ public class UIManager : MonoBehaviour
         // Ellipse image is already visible behind — just restore state
         isOnEllipseScreen = true;
         isOnRxRayScreen = true;
-        
+
         isTransitioning = false;
     }
 
@@ -514,13 +513,13 @@ public class UIManager : MonoBehaviour
         isOnConfirmationScreen = false;
 
 
-        
+
         // Fade out confirmation
         CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
         yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
         nextImageConfirmation.SetActive(false);
-      
-        
+
+
         currentImageIndex++;
         imagesShownSinceLastPause++;
 
@@ -604,7 +603,7 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray: Back to image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
-        
+
         isTransitioning = false;
     }
 
@@ -664,6 +663,13 @@ public class UIManager : MonoBehaviour
             isOnRxRayScreen = true;
             eyeTrackingDisc?.SetActive(true);
             SetEllipsesLegend(false);
+
+            if (calibrationManager != null)
+            {
+                float distance = PlayerPrefs.GetFloat("CalibratedDistance", 1.5f);
+                calibrationManager.SetDistanceFromHead(distance);
+                calibrationManager.Recenter();
+            }
         }
 
         isTransitioning = false;
@@ -705,8 +711,13 @@ public class UIManager : MonoBehaviour
         if (vrCursorRect != null)
             vrCursorRect.gameObject.SetActive(active);
 
-        // When legend is active, unlock system cursor so mouse.delta works
-        UnityEngine.Cursor.lockState = active ? CursorLockMode.None : CursorLockMode.Locked;
-        UnityEngine.Cursor.visible = false; // always hide system cursor in VR
+        #if !UNITY_ANDROID
+                    UnityEngine.Cursor.lockState = active ? CursorLockMode.None : CursorLockMode.Locked;
+                    UnityEngine.Cursor.visible = false;
+        #endif
+
+        // Recenter the RX-Ray canvas in front of the headset when entering ellipse screen
+        if (active && calibrationManager != null)
+            calibrationManager.Recenter();
     }
 }

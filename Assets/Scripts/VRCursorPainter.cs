@@ -58,6 +58,10 @@ public class VRCursorPainter : MonoBehaviour
 
     private void Update()
     {
+        
+        if (Mouse.current == null) return;
+
+
         if (uiManager == null) return;
 
         // Reset drawing when leaving ellipse screen
@@ -66,10 +70,10 @@ public class VRCursorPainter : MonoBehaviour
             WriteCSV();
             ResetPainting();
         }
-        wasOnEllipseScreen = uiManager.isOnEllipseScreen;
 
         if (!uiManager.isOnEllipseScreen) return;
-        if (Mouse.current == null) return;
+
+        wasOnEllipseScreen = uiManager.isOnEllipseScreen;
 
         // 1. CRITICAL GUARD (Standard UI Elements): Check if the mouse is clicking on a regular UI element
         if (UnityEngine.EventSystems.EventSystem.current != null &&
@@ -144,12 +148,25 @@ public class VRCursorPainter : MonoBehaviour
             currentStrokeRows.Clear();
             SaveUndoSnapshot();
         }
-
+        
         Vector2 mouseScreen = Mouse.current.position.ReadValue();
         Camera cam = Camera.main;
-        float imageWorldZ = targetSR.transform.position.z;
-        float camSpaceZ = cam.WorldToScreenPoint(new Vector3(0, 0, imageWorldZ)).z;
-        Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, imageWorldZ));
+        float imageZ = activeImageRenderer.transform.position.z;
+
+
+        Vector3 worldPoint = cam.ScreenToWorldPoint(
+            new Vector3(mouseScreen.x, mouseScreen.y, imageZ));
+        transform.position = new Vector3(
+          worldPoint.x,
+          worldPoint.y,
+          imageZ);
+
+        //Camera cam = Camera.main;
+        //float imageWorldZ = targetSR.transform.position.z;
+        //float camSpaceZ = cam.WorldToScreenPoint(new Vector3(0, 0, imageWorldZ)).z;
+        //Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, imageWorldZ));
+
+
 
         Bounds bounds = targetSR.bounds;
         float nx = (worldPoint.x - bounds.min.x) / (bounds.max.x - bounds.min.x);
@@ -236,6 +253,9 @@ public class VRCursorPainter : MonoBehaviour
 
     void WriteCSV()
     {
+        // Flush any in-progress stroke before writing
+        if (isStrokeInProgress) CommitStroke();
+
         if (csvRows.Count == 0) return;
 
         EnsureOutputFolder();
@@ -270,8 +290,15 @@ public class VRCursorPainter : MonoBehaviour
 
     string OutputFolder()
     {
-        string projectRoot = Directory.GetParent(Application.dataPath).FullName;
-        return Path.Combine(projectRoot, outputFolderName);
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    return Path.Combine(Application.persistentDataPath, outputFolderName);
+#else
+        //string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+        string projectRoot = Path.Combine(Application.dataPath, "..", "PaintingData");
+        return Path.GetFullPath(projectRoot);
+#endif
+
     }
 
     void EnsureOutputFolder()

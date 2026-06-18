@@ -135,7 +135,7 @@ public class HeadCalibrationManager : MonoBehaviour
             aligner.Recenter();
         }
 
-        // ?? Reposition RX-Ray Image to the new distance ??????????????????????
+        // Reposition RX-Ray Image to the new distance
         Vector3 camForwardFlat = new Vector3(
             cameraTransform.forward.x, 0f, cameraTransform.forward.z).normalized;
 

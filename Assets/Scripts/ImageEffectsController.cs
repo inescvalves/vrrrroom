@@ -59,6 +59,7 @@ public class ImageEffectsController : MonoBehaviour
         var keyboard = Keyboard.current;
         if (mouse == null) return;
 
+        #if !UNITY_ANDROID
         if (mouse.leftButton.wasPressedThisFrame)
         {
             // Don't lock when ellipse screen is active
@@ -68,6 +69,7 @@ public class ImageEffectsController : MonoBehaviour
                 UnityEngine.Cursor.visible = false;
             }
         }
+        #endif
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
         {
             UnityEngine.Cursor.lockState = CursorLockMode.None;

@@ -60,8 +60,13 @@ public class SpeechRecognitionTest : MonoBehaviour
 
     private void OnTrialStartTrigger()
     {
+#if UNITY_ANDROID && !UNITY_EDITOR
+    string folder = Path.Combine(Application.persistentDataPath, "AudioRecording");
+#else
         string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         string folder = Path.Combine(projectRoot, "AudioRecording");
+#endif
+
         Directory.CreateDirectory(folder);
 
         string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");

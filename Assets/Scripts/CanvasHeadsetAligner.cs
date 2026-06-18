@@ -39,7 +39,7 @@ public class CanvasHeadsetAligner : MonoBehaviour
     }
 
     private void Start()
-    {        
+    {
         if (PlayerPrefs.HasKey("CalibratedDistance"))
         {
             distanceFromHead = PlayerPrefs.GetFloat("CalibratedDistance");
@@ -56,7 +56,11 @@ public class CanvasHeadsetAligner : MonoBehaviour
             float savedDistance = PlayerPrefs.GetFloat("CalibratedDistance");
             SetDistanceFromHead(savedDistance);
         }
-        SnapToHeadset();
+
+        if (IsHeadsetTracked())
+        {
+            SnapToHeadset();
+        }
     }
 
     private IEnumerator AlignOnStartup()
@@ -99,7 +103,6 @@ public class CanvasHeadsetAligner : MonoBehaviour
 
     private Quaternion TargetRotation()
     {
-        // Only use camera's horizontal (yaw) direction, ignoring pitch/roll
         Vector3 camForwardFlat = new Vector3(_cam.transform.forward.x, 0f, _cam.transform.forward.z);
 
         if (camForwardFlat == Vector3.zero) return Quaternion.identity;
@@ -107,13 +110,10 @@ public class CanvasHeadsetAligner : MonoBehaviour
         return Quaternion.LookRotation(camForwardFlat.normalized, Vector3.up);
     }
 
-    // Call this specifically when the user forces a calibration update
     public void RecenterInstant(float newDistance)
     {
         StopAllCoroutines();
         distanceFromHead = newDistance;
-
-        // Temporarily force enable to ensure transform updates, snap, then restore
         SnapToHeadset();
     }
 
@@ -123,7 +123,6 @@ public class CanvasHeadsetAligner : MonoBehaviour
 
         if (!gameObject.activeInHierarchy)
         {
-            // Object is inactive — snap immediately without a coroutine
             SnapToHeadset();
             return;
         }
@@ -135,27 +134,6 @@ public class CanvasHeadsetAligner : MonoBehaviour
     {
         distanceFromHead = distance;
     }
-
-//#if UNITY_EDITOR
-//    private void OnDrawGizmosSelected()
-//    {
-//        var cam = GetComponent<Canvas>()?.worldCamera ?? Camera.main;
-//        if (cam == null) return;
-
-//        Vector3 target = cam.transform.position
-//                       + cam.transform.forward * distanceFromHead
-//                       + Vector3.up * verticalOffset;
-
-//        Gizmos.color = new Color(0f, 1f, 1f, 0.8f);
-//        Gizmos.DrawWireSphere(target, 0.04f);
-//        Gizmos.DrawLine(cam.transform.position, target);
-
-//        float w = 780f * 0.002f;
-//        float h = GetComponent<RectTransform>().rect.height * 0.002f;
-//        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
-//        Gizmos.DrawWireCube(target, new Vector3(w, h == 0f ? 0.5f : h, 0.001f));
-//    }
-//#endif
 
     private static bool IsHeadsetTracked()
     {

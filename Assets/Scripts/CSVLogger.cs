@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.HID;
+using UnityEngine.SceneManagement;
+using UnityEngine.SocialPlatforms.Impl;
 using UnityEngine.UIElements;
 
 public class CSVLogger : MonoBehaviour
@@ -71,6 +73,23 @@ public class CSVLogger : MonoBehaviour
             return;
         }
 
+
+        if (SceneManager.GetActiveScene().name == "VRRRRoom Training")
+        {
+            userID = UnityEngine.Random.Range(7, 1000).ToString();
+            PlayerPrefs.SetString("UserID", userID);
+            PlayerPrefs.Save();
+        }
+        else
+        {
+            userID = PlayerPrefs.GetString("UserID", "");
+            if (string.IsNullOrEmpty(userID))
+            {
+                enabled = false;
+                return;
+            }
+        }
+
         InitializeCSV();
         calibrationReset = headPosition.transform.position.z;
 
@@ -104,10 +123,15 @@ public class CSVLogger : MonoBehaviour
     // Creates the CSVLoggers folder and writes the CSV header.
     private void InitializeCSV()
     {
+
         // Build folder path: [project root]/CSVLoggers/
-        // Application.dataPath = …/Assets  →  parent = project root
+#if UNITY_ANDROID && !UNITY_EDITOR
+    string folderPath = Path.Combine(Application.persistentDataPath, "CSVLoggers");
+#else
         string folderPath = Path.Combine(Application.dataPath, "..", "CSVLoggers");
-        folderPath = Path.GetFullPath(folderPath);   // normalize slashes
+        folderPath = Path.GetFullPath(folderPath); // normalize slashes
+#endif
+    
 
         if (!Directory.Exists(folderPath))
             Directory.CreateDirectory(folderPath);
@@ -205,7 +229,7 @@ public class CSVLogger : MonoBehaviour
                 normalizationEyeGazeX = Mathf.Abs(eyeGazeX - xminShownImage) / Mathf.Abs(xmaxShownImage - xminShownImage);
                 normalizationEyeGazeY = Mathf.Abs(eyeGazeY - yminShownImage) / Mathf.Abs(ymaxShownImage - yminShownImage);
 
-                Debug.Log("Image:" + ActiveImage.name + ", xminShownImage:" + xminShownImage + ", xmaxShownImage:" + xmaxShownImage + ", yminShownImage:" + yminShownImage + ", ymaxShownImage:" + ymaxShownImage);
+                //Debug.Log("Image:" + ActiveImage.name + ", xminShownImage:" + xminShownImage + ", xmaxShownImage:" + xmaxShownImage + ", yminShownImage:" + yminShownImage + ", ymaxShownImage:" + ymaxShownImage);
 
                 normalizationCorrectedEyeGazeX = normalizationEyeGazeX - delta.Item1;
                 normalizationCorrectedEyeGazeY = normalizationEyeGazeY - delta.Item2;

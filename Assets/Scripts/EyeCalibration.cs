@@ -96,7 +96,6 @@ public class EyeCalibration : MonoBehaviour
     {
         DontDestroyOnLoad(gameObject);
         ValidateReferences();
-        resolvedUserID = ResolveUserID();
         EnsureOutputFolder();
 
         //redObject = redRect != null ? redRect.gameObject : null;
@@ -138,6 +137,7 @@ public class EyeCalibration : MonoBehaviour
 
     void Update()
     {
+        
         if (!isInitialized || finished) return;
 
         if (borderPhase)
@@ -329,12 +329,12 @@ public class EyeCalibration : MonoBehaviour
 
         if (savedCount >= 6)
         {
-            //EndCalibration();
+            EndCalibration();
             //GetActiveImageName();
             
 
             WriteCSV();
-            
+
         }
         else
         {
@@ -412,71 +412,6 @@ public class EyeCalibration : MonoBehaviour
         return quadrantOrigins[idx] + new Vector2(rx, ry);
     }
 
-    // ── Fifth circle – border phase ────────────────────────────────────────────
-
-    //void StartBorderPhase()
-    //{
-    //    borderPhase = true;
-    //    borderT = 0f;
-    //    borderTimer = 0f;
-
-    //    // 1. Instantiate the circle
-    //    fifthObject = Instantiate(blueCirclePrefab, calibrationArea);
-    //    fifthObject.name = "BorderCircle";
-
-    //    // 2. Fix the "Invisible/Behind" issue
-    //    fifthObject.transform.SetAsLastSibling();
-
-    //    // 3. Fix the "Big Circle" issue (Reset Scale & Size)
-    //    fifthRect = fifthObject.GetComponent<RectTransform>();
-    //    fifthRect.sizeDelta = new Vector2(blueCircleRadius * 2f, blueCircleRadius * 2f);
-
-    //    // 4. Align Anchors and Pivot for movement math
-    //    fifthRect.anchorMin = new Vector2(0.5f, 0.5f);
-    //    fifthRect.anchorMax = new Vector2(0.5f, 0.5f);
-    //    fifthRect.pivot = new Vector2(0.5f, 0.5f);
-
-    //    if (redRect != null) redRect.SetAsLastSibling();
-
-    //    //UpdateStatus("Follow the moving circle...");
-    //}
-
-    // Maps t ∈ [0,1) to a position on the rectangular border (clockwise, starting top-left).
-    //Vector2 BorderPosition(float t, float w, float h, float margin)
-    //{
-    //    float left = -w * 0.5f + margin;
-    //    float right = w * 0.5f - margin;
-    //    float top = h * 0.5f - margin;
-    //    float bottom = -h * 0.5f + margin;
-
-    //    float segTop = (right - left);           // top edge length
-    //    float segRight = (top - bottom);           // right edge length
-    //    float segBottom = (right - left);           // bottom edge length
-    //    float segLeft = (top - bottom);           // left edge length
-    //    float perimeter = segTop + segRight + segBottom + segLeft;
-
-    //    float dist = t * perimeter;
-
-    //    if (dist < segTop)                          // top: left → right
-    //        return new Vector2(left + dist, top);
-
-    //    dist -= segTop;
-    //    if (dist < segRight)                        // right: top → bottom
-    //        return new Vector2(right, top - dist);
-
-    //    dist -= segRight;
-    //    if (dist < segBottom)                       // bottom: right → left
-    //        return new Vector2(right - dist, bottom);
-
-    //    dist -= segBottom;                          // left: bottom → top
-    //    return new Vector2(left, bottom + dist);
-    //}
-
-    //void OnBorderClick()
-    //{
-    //    EndCalibration();
-    //}
-
     public void EndCalibration()
     {
         finished = true;
@@ -488,11 +423,12 @@ public class EyeCalibration : MonoBehaviour
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.AppendLine("EyeGazeX,"+ "EyeGazeY,"+ "BlueCircleX,"+"BlueCircleY,"+"DeltaX," +"DeltaY");
+        sb.AppendLine("EyeGazeX," + "EyeGazeY," + "BlueCircleX," + "BlueCircleY," + "DeltaX," + "DeltaY");
 
         foreach (string row in csvRows)
             sb.AppendLine(row);
 
+        resolvedUserID = ResolveUserID();
         string path = CsvPath();
         File.WriteAllText(path, sb.ToString());
         Debug.Log($"[Calibration] CSV written to: {path}");
@@ -506,8 +442,12 @@ public class EyeCalibration : MonoBehaviour
     {
         // Application.dataPath = .../YourProject/Assets
         // Going one level up gives the project root
+#if UNITY_ANDROID && !UNITY_EDITOR
+    return Path.Combine(Application.persistentDataPath, outputFolderName);
+#else
         string projectRoot = Directory.GetParent(Application.dataPath).FullName;
         return Path.Combine(projectRoot, outputFolderName);
+#endif
     }
 
     string CsvPath() =>
