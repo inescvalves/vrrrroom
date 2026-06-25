@@ -63,31 +63,28 @@ public class VRCursor : MonoBehaviour
 
         Vector2 mouseScreen = Mouse.current.position.ReadValue();
 
-        //// Use camera unproject — same as the painter does
         Camera cam = Camera.main;
-        //transform.position = cam.ScreenToWorldPoint(
-        //    new Vector3(mouseScreen.x, mouseScreen.y, uiManager.rxRayImageCanvas.transform.position.z));
 
-        //float cursorWorldZ = transform.position.z;
-        //float camDepth = cam.WorldToScreenPoint(new Vector3(0, 0, cursorWorldZ)).z;
-        //Vector3 worldPoint = cam.ScreenToWorldPoint(
-        //    new Vector3(mouseScreen.x, mouseScreen.y, camDepth));
+        // Ray-plane intersection against the active image  pose-independent
+        Transform activeImage = GetActiveImageTransform();
+        if (activeImage != null)
+        {
+            Ray ray = cam.ScreenPointToRay(mouseScreen);
 
-        //transform.position = new Vector3(
-        //    worldPoint.x + cursorOffsetX,
-        //    worldPoint.y + cursorOffsetY,
-        //    cursorWorldZ);
-        
-        // Use the active image Z as the depth reference — same as VRCursorPainter
-        float imageZ = GetActiveImageZ();
 
-        Vector3 worldPoint = cam.ScreenToWorldPoint(
-            new Vector3(mouseScreen.x, mouseScreen.y, imageZ));
-        
-        transform.position = new Vector3(
-           worldPoint.x + cursorOffsetX,
-           worldPoint.y + cursorOffsetY,
-           imageZ);
+            // pick the face normal that points toward the camera (sign-agnostic)
+            Vector3 toCam = (cam.transform.position - activeImage.position).normalized;
+            Vector3 normal = Vector3.Dot(activeImage.forward, toCam) > 0f
+                ? activeImage.forward
+                : -activeImage.forward;
+            Plane imagePlane = new Plane(normal, activeImage.position);
+
+            if (imagePlane.Raycast(ray, out float enter))
+            {
+                Vector3 worldPoint = ray.GetPoint(enter);
+                transform.position = worldPoint + new Vector3(cursorOffsetX, cursorOffsetY, 0f);
+            }
+        }
 
         //--------------------
 
@@ -122,6 +119,24 @@ public class VRCursor : MonoBehaviour
         }
         // Fallback to canvas Z
         return uiManager.rxRayImageCanvas.transform.position.z;
+    }
+
+    // Gets the Transform of the currently active image  same selection logic as GetActiveImageZ
+    private Transform GetActiveImageTransform()
+    {
+        if (uiManager.rxRayImagesParent != null)
+        {
+            foreach (Transform child in uiManager.rxRayImagesParent)
+            {
+                if (!child.gameObject.activeInHierarchy) continue;
+                SpriteRenderer sr = child.GetComponent<SpriteRenderer>();
+                if (sr != null) return sr.transform;
+            }
+        }
+        // Fallback to the canvas transform
+        return uiManager.rxRayImageCanvas != null
+            ? uiManager.rxRayImageCanvas.transform
+            : null;
     }
 
     public bool IsCursorOverUndoButton()

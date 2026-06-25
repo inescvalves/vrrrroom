@@ -4929,8 +4929,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.000018894672, y: 0.748}
-  m_SizeDelta: {x: 634.9332, y: -66.6702}
+  m_AnchoredPosition: {x: 0.0037935972, y: 0.764}
+  m_SizeDelta: {x: 708.7937, y: -66.6702}
   m_Pivot: {x: 0.49999997, y: 0.5}
 --- !u!114 &630933070
 MonoBehaviour:
@@ -4953,7 +4953,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: '<align=center>Please check if the image contains lesions. If that''s the
-    case, describe them</align></size>
+    case, describe them. You can change the luminance and contrast by keep pressing
+    the left button.</align></size>
 
 '
   m_isRightToLeft: 0
@@ -9055,8 +9056,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.00002002716, y: 0.748}
-  m_SizeDelta: {x: 672.7072, y: -66.6702}
+  m_AnchoredPosition: {x: -0.00002002716, y: 0.023}
+  m_SizeDelta: {x: 672.7072, y: -68.073105}
   m_Pivot: {x: 0.49999997, y: 0.5}
 --- !u!114 &1278116740
 MonoBehaviour:
@@ -9078,8 +9079,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: '<align=center>Please look at each ball and press the left button. If there
-    are no more balls, press right button to continue.</align></size>
+  m_text: '<align=center>Please press right button to continue.</align></size>
 
 '
   m_isRightToLeft: 0

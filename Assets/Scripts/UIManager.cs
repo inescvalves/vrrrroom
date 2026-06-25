@@ -70,6 +70,9 @@ public class UIManager : MonoBehaviour
 
     private float rxRayZMin = 1f;
     private float rxRayZScrollSpeed = 120f;
+    private float newZ = 1.5f;
+
+    private bool eyeCalibrationFinish = false;
 
 
     // -------------------------------------------------------
@@ -138,7 +141,6 @@ public class UIManager : MonoBehaviour
                 diagnosisText.SetActive(false);
                 analysisText.SetActive(false);
                 headCalibrationText.SetActive(false);
-                eyeCalibrationText.SetActive(false);
             }
             if (rightPressed) { isOnEllipseScreen = false; ConfirmNextImage(); }
             else if (leftPressed) StartCoroutine(GoBackToEllipseRoutine());
@@ -150,7 +152,6 @@ public class UIManager : MonoBehaviour
                 diagnosisText.SetActive(false);
                 analysisText.SetActive(false);
                 headCalibrationText.SetActive(false);
-                eyeCalibrationText.SetActive(false);
             }
             if (rightPressed) { UpdateRxRayCanvasZ(calibrationManager.distanceFromHead); isOnEllipseScreen = true; GoBackToPrevImage(); }
             else if (leftPressed) { isOnEllipseScreen = false; GoBackToPrevImage(); }
@@ -162,12 +163,11 @@ public class UIManager : MonoBehaviour
                 diagnosisText.SetActive(true);
                 analysisText.SetActive(false);
                 headCalibrationText.SetActive(false);
-                eyeCalibrationText.SetActive(false);
             }
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (scroll != 0f)
             {
-                float newZ = rxRayImageCanvas.transform.position.z + scroll * rxRayZScrollSpeed;
+                newZ += scroll * rxRayZScrollSpeed;
                 newZ = Mathf.Clamp(newZ, rxRayZMin, calibrationManager.distanceFromHead);
                 //float smoothedZ = Mathf.Lerp(
                 //    rxRayImageCanvas.transform.position.z,
@@ -197,14 +197,12 @@ public class UIManager : MonoBehaviour
                     headCalibrationText.SetActive(true);
                     diagnosisText.SetActive(false);
                     analysisText.SetActive(false);
-                    eyeCalibrationText.SetActive(false);
                 }
                 else
                 {
                     headCalibrationText.SetActive(false);
                     diagnosisText.SetActive(false);
                     analysisText.SetActive(true);
-                    eyeCalibrationText.SetActive(false);
                 }
             }
             else if (training && eyeCalibrationCanvas.activeSelf)
@@ -212,9 +210,16 @@ public class UIManager : MonoBehaviour
                 headCalibrationText.SetActive(false);
                 diagnosisText.SetActive(false);
                 analysisText.SetActive(false);
+                if (eyeCalibration.finished == true && eyeCalibrationFinish == false)
+                {
+                    eyeCalibrationText.SetActive(true);
+                    eyeCalibrationFinish = true;
+                }
+            }
+            if (rightPressed) {
+                ShowNextImage();
                 eyeCalibrationText.SetActive(false);
             }
-            if (rightPressed) ShowNextImage();
         }
         else if (isOnPauseScreen)
         {
@@ -281,12 +286,28 @@ public class UIManager : MonoBehaviour
         cursor?.RefreshSquares();
     }
 
-    public void UpdateRxRayCanvasZ(float newZ)
+    public void UpdateRxRayCanvasZ(float distance)
     {
-        if (rxRayImageCanvas == null) return;
+        //if (rxRayImageCanvas == null) return;
 
-        Vector3 pos = rxRayImageCanvas.transform.position;
-        rxRayImageCanvas.transform.position = new Vector3(pos.x, pos.y, newZ);
+        //Vector3 pos = rxRayImageCanvas.transform.position;
+        //rxRayImageCanvas.transform.position = new Vector3(pos.x, pos.y, newZ);
+
+        // Refresh sprite bounds and cursor squares after move
+        //RefreshCurrentImagePosition();
+
+        if (rxRayImageCanvas == null || mainCamera == null) return;
+
+        Transform cam = mainCamera.transform;
+        Vector3 fwdFlat = new Vector3(cam.forward.x, 0f, cam.forward.z).normalized;
+
+        // place it 'distance' in front of the head, keep its current height
+        Vector3 target = cam.position + fwdFlat * distance;
+        target.y = rxRayImageCanvas.transform.position.y;   // preserve vertical offset
+        rxRayImageCanvas.transform.position = target;
+
+        // keep it facing you so it never shows its mirrored back face
+        rxRayImageCanvas.transform.rotation = Quaternion.LookRotation(fwdFlat, Vector3.up);
 
         // Refresh sprite bounds and cursor squares after move
         RefreshCurrentImagePosition();

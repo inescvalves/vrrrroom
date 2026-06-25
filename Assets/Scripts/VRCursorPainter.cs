@@ -129,50 +129,63 @@ public class VRCursorPainter : MonoBehaviour
     void TryPaint()
     {
         if (uiManager.rxRayImagesParent == null) return;
+        if (vrCursor == null) return;
+
+        // Find the active image via raycast from camera through cursor
+        Camera cam = Camera.main;
+        Vector3 cursorWorld = vrCursor != null ? vrCursor.transform.position : transform.position;
+        Ray ray = new Ray(cam.transform.position, (cursorWorld - cam.transform.position).normalized);
 
         SpriteRenderer targetSR = null;
+        float closestDist = Mathf.Infinity;
+
         foreach (Transform child in uiManager.rxRayImagesParent)
         {
             if (!child.gameObject.activeInHierarchy) continue;
             SpriteRenderer sr = child.GetComponent<SpriteRenderer>();
-            if (sr != null) { targetSR = sr; break; }
+            if (sr == null) continue;
+
+            if (sr.bounds.IntersectRay(ray, out float dist) && dist < closestDist)
+            {
+                closestDist = dist;
+                targetSR = sr;
+            }
         }
 
         if (targetSR == null) return;
         if (targetSR != activeImageRenderer) SetupPaintTexture(targetSR);
 
-        // This block is now perfectly safe because the UI guard above blocks button clicks
         if (Mouse.current.leftButton.wasPressedThisFrame && !isStrokeInProgress)
         {
             isStrokeInProgress = true;
             currentStrokeRows.Clear();
             SaveUndoSnapshot();
         }
+
+        // 1- Use the ray hit point on the image plane for normalized UV coords
+        //float imageZ = activeImageRenderer.transform.position.z;
+        //Vector2 mouseScreen = Mouse.current.position.ReadValue();
+        //Vector3 worldPoint = cam.ScreenToWorldPoint(
+        //    new Vector3(mouseScreen.x, mouseScreen.y, imageZ));
+
+        //transform.position = new Vector3(worldPoint.x, worldPoint.y, imageZ);
         
-        Vector2 mouseScreen = Mouse.current.position.ReadValue();
-        Camera cam = Camera.main;
-        float imageZ = activeImageRenderer.transform.position.z;
+        // Cursor is already placed on the image plane by VRCursor
+        Vector3 worldPoint = cursorWorld;
+        transform.position = worldPoint;
 
-
-        Vector3 worldPoint = cam.ScreenToWorldPoint(
-            new Vector3(mouseScreen.x, mouseScreen.y, imageZ));
-        transform.position = new Vector3(
-          worldPoint.x,
-          worldPoint.y,
-          imageZ);
-
-        //Camera cam = Camera.main;
-        //float imageWorldZ = targetSR.transform.position.z;
-        //float camSpaceZ = cam.WorldToScreenPoint(new Vector3(0, 0, imageWorldZ)).z;
-        //Vector3 worldPoint = cam.ScreenToWorldPoint(new Vector3(mouseScreen.x, mouseScreen.y, imageWorldZ));
-
-
-
-        Bounds bounds = targetSR.bounds;
-        float nx = (worldPoint.x - bounds.min.x) / (bounds.max.x - bounds.min.x);
-        float ny = (worldPoint.y - bounds.min.y) / (bounds.max.y - bounds.min.y);
+        //Bounds bounds = targetSR.bounds;
+        //float nx = (worldPoint.x - bounds.min.x) / (bounds.max.x - bounds.min.x);
+        //float ny = (worldPoint.y - bounds.min.y) / (bounds.max.y - bounds.min.y);
+        Vector3 lp = targetSR.transform.InverseTransformPoint(worldPoint);
+        Bounds lb = targetSR.sprite.bounds;          // local, centered on pivot
+        float nx = (lp.x - lb.min.x) / lb.size.x;
+        float ny = (lp.y - lb.min.y) / lb.size.y;
 
         if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+
+        // Mirror nx about the image's vertical center line so paint follows the cursor.
+        //nx = 1f - nx;
 
         Color paintColor = Color.white;
         if (vrCursor != null)
