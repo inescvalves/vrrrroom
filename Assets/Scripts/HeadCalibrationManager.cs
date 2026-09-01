@@ -4,6 +4,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using System.Globalization;
+using System.IO;
+using System.Text;
 
 public class HeadCalibrationManager : MonoBehaviour
 {
@@ -21,6 +24,11 @@ public class HeadCalibrationManager : MonoBehaviour
 
     [Header("Canvas Aligner")]
     public CanvasHeadsetAligner targetAligner;
+
+    [Header("CSV Output")]
+    public string csvLoggerObjectName = "CSVLogger";
+    public string fallbackUserID = "unknown_user";
+    public string outputFolderName = "CalibrationData";
 
     // Recorded positions
     private float baseZ;
@@ -90,7 +98,25 @@ public class HeadCalibrationManager : MonoBehaviour
         if (imageChildRX1.activeSelf && Mouse.current.leftButton.wasPressedThisFrame && UIManager.Instance.isOnEllipseScreen == false)
         {
             float distance = RecordDistance();
+            SaveDistanceCSV(distance);
         }
+    }
+
+    private void SaveDistanceCSV(float distance)
+    {
+        string folder;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        folder = Path.Combine(Application.persistentDataPath, outputFolderName);
+#else
+        folder = Path.Combine(Directory.GetParent(Application.dataPath).FullName, outputFolderName);
+#endif
+        if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+
+        string path = Path.Combine(folder, $"{ResolveUserID()}_distance.csv");
+        string value = distance.ToString("F4", CultureInfo.InvariantCulture);
+
+        File.WriteAllText(path, "Distance\n" + value + "\n");
+        Debug.Log($"[HeadCalibrationManager] Distance CSV written to: {path}");
     }
 
     public float RecordDistance()
@@ -150,6 +176,30 @@ public class HeadCalibrationManager : MonoBehaviour
             UIManager.Instance.UpdateRxRayCanvasZ(newPosition.z);
 
         return distance;
+    }
+
+    private string ResolveUserID()
+    {
+        GameObject loggerGO = GameObject.Find(csvLoggerObjectName);
+        if (loggerGO == null) return fallbackUserID;
+
+        foreach (MonoBehaviour mb in loggerGO.GetComponents<MonoBehaviour>())
+        {
+            if (mb == null) continue;
+            foreach (string fieldName in new[] { "userID", "userId", "UserID", "UserId", "user_id" })
+            {
+                var field = mb.GetType().GetField(fieldName,
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance);
+
+                if (field != null && field.FieldType == typeof(string))
+                {
+                    string value = field.GetValue(mb) as string;
+                    if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
+                }
+            }
+        }
+        return fallbackUserID;
     }
 
 
