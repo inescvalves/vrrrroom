@@ -1,4 +1,5 @@
 using Oculus.Interaction.Samples;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -32,6 +33,25 @@ public class UIManager : MonoBehaviour
     public float fadeDuration = 0.4f;
     public int imagesBetweenPause = 3;
     public bool pauseBetweenModalities;
+
+    // -------------------------------------------------------
+    // ANALYSIS TIMER (NEW)
+    // -------------------------------------------------------
+    [Header("Analysis Timer")]
+    [Tooltip("Enable the countdown that limits the analysis (search) phase of each image.")]
+    public bool useAnalysisTimer = true;
+
+    [Tooltip("Length of the analysis phase, in seconds. Protocol default: 120 s (2 minutes).")]
+    public float analysisTimeLimit = 120f;
+
+    /// <summary>Raised when the analysis phase of an image ends.
+    /// (imageIndex, secondsSpent, endedByTimeout)</summary>
+    public event Action<int, float, bool> OnAnalysisPhaseEnded;
+
+    private float analysisTimeRemaining;
+    private bool analysisTimerRunning;
+    private float analysisElapsed;          // accumulated search time for the current image
+    private bool analysisTimerExpired;      // guards against double-firing on the same image
 
     [Header("Managers")]
     public CanvasHeadsetAligner calibrationManager;
@@ -124,6 +144,10 @@ public class UIManager : MonoBehaviour
         if (Mouse.current == null) return;
         if (isTransitioning) return;
 
+        // Countdown ticks only while the participant is actually in the analysis phase.
+        TickAnalysisTimer();
+        if (isTransitioning) return;   // the timer may have just fired and started a transition
+
         bool rightPressed = Mouse.current.rightButton.wasPressedThisFrame;
         bool leftPressed = Mouse.current.leftButton.wasPressedThisFrame;
 
@@ -153,7 +177,7 @@ public class UIManager : MonoBehaviour
                 analysisText.SetActive(false);
                 headCalibrationText.SetActive(false);
             }
-            if (rightPressed) { UpdateRxRayCanvasZ(calibrationManager.distanceFromHead); isOnEllipseScreen = true; GoBackToPrevImage(); }
+            if (rightPressed) { UpdateRxRayCanvasZ(calibrationManager.distanceFromHead); newZ = calibrationManager.distanceFromHead; isOnEllipseScreen = true; GoBackToPrevImage(); }
             else if (leftPressed) { isOnEllipseScreen = false; GoBackToPrevImage(); }
         }
         else if (isOnRxRayScreen && isOnEllipseScreen)
@@ -169,15 +193,8 @@ public class UIManager : MonoBehaviour
             {
                 newZ += scroll * rxRayZScrollSpeed;
                 newZ = Mathf.Clamp(newZ, rxRayZMin, calibrationManager.distanceFromHead);
-                //float smoothedZ = Mathf.Lerp(
-                //    rxRayImageCanvas.transform.position.z,
-                //    newZ,
-                //    10f * Time.deltaTime
-                //);
                 UpdateRxRayCanvasZ(newZ);
             }
-
-
 
             if (rightPressed)
             {
@@ -216,7 +233,11 @@ public class UIManager : MonoBehaviour
                     eyeCalibrationFinish = true;
                 }
             }
-            if (rightPressed) {
+            if (rightPressed)
+            {
+                // Manual end of the analysis phase — unchanged behaviour:
+                // goes to the "analysis concluded" confirmation message.
+                EndAnalysisTimer(false);
                 ShowNextImage();
                 eyeCalibrationText.SetActive(false);
             }
@@ -243,6 +264,99 @@ public class UIManager : MonoBehaviour
             }
             if (rightPressed) GoToNext();
         }
+    }
+
+    // -------------------------------------------------------
+    // Analysis Timer (NEW)
+    // -------------------------------------------------------
+
+    /// <summary>Starts (or resumes) the analysis countdown for the current image.</summary>
+    /// <param name="reset">true = fresh image, restart at analysisTimeLimit;
+    /// false = participant returned to the same image, keep the remaining time.</param>
+    private void StartAnalysisTimer(bool reset = true)
+    {
+        if (!useAnalysisTimer) return;
+
+        if (reset)
+        {
+            analysisTimeRemaining = analysisTimeLimit;
+            analysisElapsed = 0f;
+            analysisTimerExpired = false;
+        }
+
+        if (analysisTimerExpired) return;
+
+        analysisTimerRunning = true;
+    }
+
+    /// <summary>Pauses the countdown without closing the phase (fades, confirmations, pauses).
+    /// The countdown is silent and invisible to the participant — nothing is displayed at any point.</summary>
+    private void PauseAnalysisTimer()
+    {
+        analysisTimerRunning = false;
+    }
+
+    /// <summary>Closes the analysis phase for the current image and reports the search time.</summary>
+    private void EndAnalysisTimer(bool byTimeout)
+    {
+        if (!analysisTimerRunning && !byTimeout && analysisElapsed <= 0f) return;
+
+        analysisTimerRunning = false;
+
+        OnAnalysisPhaseEnded?.Invoke(currentImageIndex, analysisElapsed, byTimeout);
+        Debug.Log($"RX-Ray: analysis phase of image {currentImageIndex + 1} ended after " +
+                  $"{analysisElapsed:F2}s ({(byTimeout ? "TIMER EXPIRED" : "participant right-click")}).");
+    }
+
+    private void TickAnalysisTimer()
+    {
+        if (!useAnalysisTimer || !analysisTimerRunning) return;
+
+        // Only count while genuinely in the analysis phase of an image.
+        if (!isOnRxRayScreen || isOnEllipseScreen || isOnConfirmationScreen || isOnAnalysisConfirmationScreen || isOnPauseScreen)
+            return;
+
+        // Do not count while eye-tracking calibration is still running on the RX-Ray canvas.
+        if (eyeCalibration != null && !eyeCalibration.finished && eyeCalibration.imageRXRay != null && eyeCalibration.imageRXRay.activeSelf)
+            return;
+
+        analysisTimeRemaining -= Time.deltaTime;
+        analysisElapsed += Time.deltaTime;
+
+        if (analysisTimeRemaining <= 0f)
+        {
+            analysisTimeRemaining = 0f;
+            analysisTimerExpired = true;
+            EndAnalysisTimer(true);
+            StartCoroutine(AutoEnterEllipseRoutine());
+        }
+    }
+
+    /// <summary>
+    /// Timer expiry path: skip the "analysis concluded" confirmation and drop the participant
+    /// straight into the annotation (ellipse) phase on the SAME image, with no fade, so the
+    /// image never disappears and nothing is lost.
+    /// </summary>
+    private IEnumerator AutoEnterEllipseRoutine()
+    {
+        isTransitioning = true;
+
+        eyeTrackingDisc?.SetActive(false);
+        isOnEllipseScreen = true;
+        isOnRxRayScreen = true;
+
+        if (calibrationManager != null)
+        {
+            UpdateRxRayCanvasZ(calibrationManager.distanceFromHead);
+            newZ = calibrationManager.distanceFromHead;
+        }
+
+        SetEllipsesLegend(true);
+
+        Debug.Log($"RX-Ray: timer expired on image {currentImageIndex + 1} — auto-entering annotation phase.");
+
+        yield return null;
+        isTransitioning = false;
     }
 
     private void UpdateVRCursor()
@@ -288,14 +402,6 @@ public class UIManager : MonoBehaviour
 
     public void UpdateRxRayCanvasZ(float distance)
     {
-        //if (rxRayImageCanvas == null) return;
-
-        //Vector3 pos = rxRayImageCanvas.transform.position;
-        //rxRayImageCanvas.transform.position = new Vector3(pos.x, pos.y, newZ);
-
-        // Refresh sprite bounds and cursor squares after move
-        //RefreshCurrentImagePosition();
-
         if (rxRayImageCanvas == null || mainCamera == null) return;
 
         Transform cam = mainCamera.transform;
@@ -327,10 +433,6 @@ public class UIManager : MonoBehaviour
     }
 
     public void GoToHome() => JumpTo(0);
-    //public void GoToStartCalibration() => JumpTo(1);
-    //public void GoToCalibrationForward() => JumpTo(2);
-    //public void GoToCalibrationBackward() => JumpTo(3);
-    //public void GoToCalibrationResults() => JumpTo(4);
     public void GoToRXRayImage() => JumpTo(1);
     public void GoToPauseBeforeChangingAnchors() => JumpTo(2);
     public void GoToTrialResultsScreen() => JumpTo(3);
@@ -364,7 +466,7 @@ public class UIManager : MonoBehaviour
         {
             for (int i = shuffledImages.Count - 1; i > 0; i--)
             {
-                int j = Random.Range(0, i + 1);
+                int j = UnityEngine.Random.Range(0, i + 1);
                 (shuffledImages[i], shuffledImages[j]) = (shuffledImages[j], shuffledImages[i]);
             }
         }
@@ -403,6 +505,7 @@ public class UIManager : MonoBehaviour
     {
         isTransitioning = true;
         isOnAnalysisConfirmationScreen = false;
+        PauseAnalysisTimer();
         SetEllipsesLegend(false);
         if (currentImageIndex < shuffledImages.Count && shuffledImages[currentImageIndex].activeSelf)
         {
@@ -417,8 +520,6 @@ public class UIManager : MonoBehaviour
         confirmCG.alpha = 0f;
         yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
 
-
-
         isOnConfirmationScreen = true;
         isTransitioning = false;
     }
@@ -427,6 +528,7 @@ public class UIManager : MonoBehaviour
     {
         isTransitioning = true;
         isOnRxRayScreen = false;
+        PauseAnalysisTimer();
         SetEllipsesLegend(isOnEllipseScreen);
         CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         yield return StartCoroutine(Fade(currentCG, 1f, 0f));
@@ -440,7 +542,6 @@ public class UIManager : MonoBehaviour
         yield return StartCoroutine(Fade(confirmCG, 0f, 1f));
 
         isOnAnalysisConfirmationScreen = true;
-
 
         isTransitioning = false;
     }
@@ -472,6 +573,7 @@ public class UIManager : MonoBehaviour
     {
         isTransitioning = true;
         isOnRxRayScreen = false;
+        PauseAnalysisTimer();
 
         // Fade out current image
         CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
@@ -519,6 +621,7 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray (training): Showing image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
+        StartAnalysisTimer();               // fresh 2 minutes for the new image
         isTransitioning = false;
     }
 
@@ -533,13 +636,10 @@ public class UIManager : MonoBehaviour
         isTransitioning = true;
         isOnConfirmationScreen = false;
 
-
-
         // Fade out confirmation
         CanvasGroup confirmCG = GetOrAddCanvasGroup(nextImageConfirmation);
         yield return StartCoroutine(Fade(confirmCG, 1f, 0f));
         nextImageConfirmation.SetActive(false);
-
 
         currentImageIndex++;
         imagesShownSinceLastPause++;
@@ -584,6 +684,7 @@ public class UIManager : MonoBehaviour
         isOnRxRayScreen = true;
         eyeTrackingDisc?.SetActive(true);
         SetEllipsesLegend(false);
+        StartAnalysisTimer();               // fresh 2 minutes for the new image
         isTransitioning = false;
     }
 
@@ -625,6 +726,11 @@ public class UIManager : MonoBehaviour
         Debug.Log($"RX-Ray: Back to image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
 
+        // Participant chose to keep looking at the SAME image: resume the countdown with the
+        // time that was left, never a fresh 2 minutes.
+        if (!isOnEllipseScreen)
+            StartAnalysisTimer(false);
+
         isTransitioning = false;
     }
 
@@ -649,6 +755,7 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray: Resumed, showing image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
+        StartAnalysisTimer();               // new image after the pause
         isTransitioning = false;
     }
 
@@ -660,20 +767,13 @@ public class UIManager : MonoBehaviour
     {
         isTransitioning = true;
         isOnRxRayScreen = false;
+        PauseAnalysisTimer();
 
         CanvasGroup fromCG = GetOrAddCanvasGroup(from);
         yield return StartCoroutine(Fade(fromCG, 1f, 0f));
         from.SetActive(false);
 
         to.SetActive(true);
-        //if (training == false)
-        //{
-        //    if (to == startCalibrationCanvas) HeadCalibrationManager.Instance?.OnStartCalibrationEnabled();
-        //    else if (to == calibrationForwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationForwardEnabled();
-        //    else if (to == calibrationBackwardCanvas) HeadCalibrationManager.Instance?.OnCalibrationBackwardEnabled();
-        //    else if (to == calibrationResultsCanvas) HeadCalibrationManager.Instance?.OnCalibrationResultsEnabled();
-
-        //}
         CanvasGroup toCG = GetOrAddCanvasGroup(to);
         toCG.alpha = 0f;
         yield return StartCoroutine(Fade(toCG, 0f, 1f));
@@ -691,6 +791,10 @@ public class UIManager : MonoBehaviour
                 calibrationManager.SetDistanceFromHead(distance);
                 calibrationManager.Recenter();
             }
+
+            // First image of the block. TickAnalysisTimer() holds the countdown at 2:00
+            // until eye-tracking calibration reports finished.
+            StartAnalysisTimer();
         }
 
         isTransitioning = false;
@@ -732,10 +836,10 @@ public class UIManager : MonoBehaviour
         if (vrCursorRect != null)
             vrCursorRect.gameObject.SetActive(active);
 
-        #if !UNITY_ANDROID
+#if !UNITY_ANDROID
                     UnityEngine.Cursor.lockState = active ? CursorLockMode.None : CursorLockMode.Locked;
                     UnityEngine.Cursor.visible = false;
-        #endif
+#endif
 
         // Recenter the RX-Ray canvas in front of the headset when entering ellipse screen
         if (active && calibrationManager != null)
