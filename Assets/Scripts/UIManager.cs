@@ -25,6 +25,7 @@ public class UIManager : MonoBehaviour
     public GameObject analysisConcludedConfirmation;
     public GameObject ellipsesLegend;
     public EyeTrackingDisc eyeTrackingDisc;
+    public GazeHeatmap gazeHeatmap;
 
     [Header("RX-Ray — drag the 'Images' GameObject here")]
     public Transform rxRayImagesParent;
@@ -137,6 +138,8 @@ public class UIManager : MonoBehaviour
             headCalibrationText.SetActive(false);
             eyeCalibrationText.SetActive(false);
         }
+
+        gazeHeatmap?.SetVisible(false);
     }
 
     private void Update()
@@ -342,6 +345,7 @@ public class UIManager : MonoBehaviour
         isTransitioning = true;
 
         eyeTrackingDisc?.SetActive(false);
+        gazeHeatmap?.SetVisible(false);
         isOnEllipseScreen = true;
         isOnRxRayScreen = true;
 
@@ -507,6 +511,7 @@ public class UIManager : MonoBehaviour
         isOnAnalysisConfirmationScreen = false;
         PauseAnalysisTimer();
         SetEllipsesLegend(false);
+        gazeHeatmap?.SetVisible(false);
         if (currentImageIndex < shuffledImages.Count && shuffledImages[currentImageIndex].activeSelf)
         {
             CanvasGroup imgCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
@@ -530,6 +535,7 @@ public class UIManager : MonoBehaviour
         isOnRxRayScreen = false;
         PauseAnalysisTimer();
         SetEllipsesLegend(isOnEllipseScreen);
+        gazeHeatmap?.SetVisible(false);
         CanvasGroup currentCG = GetOrAddCanvasGroup(shuffledImages[currentImageIndex]);
         yield return StartCoroutine(Fade(currentCG, 1f, 0f));
         shuffledImages[currentImageIndex].SetActive(false);
@@ -549,6 +555,7 @@ public class UIManager : MonoBehaviour
     private IEnumerator GoBackToEllipseRoutine()
     {
         eyeTrackingDisc?.SetActive(false);
+        gazeHeatmap?.SetVisible(false);
 
         isTransitioning = true;
         isOnConfirmationScreen = false;
@@ -683,6 +690,7 @@ public class UIManager : MonoBehaviour
         Debug.Log($"RX-Ray: Showing image {currentImageIndex + 1} of {shuffledImages.Count}");
         isOnRxRayScreen = true;
         eyeTrackingDisc?.SetActive(true);
+        gazeHeatmap?.SetVisible(true);
         SetEllipsesLegend(false);
         StartAnalysisTimer();               // fresh 2 minutes for the new image
         isTransitioning = false;
@@ -697,6 +705,7 @@ public class UIManager : MonoBehaviour
     private IEnumerator GoBackToPrevImageRoutine()
     {
         eyeTrackingDisc?.SetActive(!isOnEllipseScreen);
+        gazeHeatmap?.SetVisible(!isOnEllipseScreen);
         SetEllipsesLegend(isOnEllipseScreen);
         isTransitioning = true;
         isOnConfirmationScreen = false;
@@ -783,6 +792,7 @@ public class UIManager : MonoBehaviour
             SetupRxRayImages();
             isOnRxRayScreen = true;
             eyeTrackingDisc?.SetActive(true);
+            gazeHeatmap?.SetVisible(true);
             SetEllipsesLegend(false);
 
             if (calibrationManager != null)
