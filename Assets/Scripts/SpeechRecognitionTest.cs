@@ -12,7 +12,7 @@ public class SpeechRecognitionTest : MonoBehaviour
     public CSVLogger trialManager;
 
     [Header("Hugging Face")]
-    [SerializeField] private string hfApiKey = "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";
+    [SerializeField] private string hfApiKey = "";
     private const string ModelUrl = "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3";
 
     [Header("Recording Settings")]
