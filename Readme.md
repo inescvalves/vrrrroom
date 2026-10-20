@@ -122,7 +122,7 @@ pip install jupyter          # eye_gaze_visualization.ipynb
 3. Open `Assets/Scenes/VRRRRoom Training.unity` or `VRRRRoom Static.unity`.
 4. Select the **CSVLogger** GameObject and set **`userID`** to the participant ID. Every output file is named with this ID.
 5. *(Optional, for speech transcription)* Enter your Hugging Face token on the `SpeechRecognitionTest` component or in `Assets/Resources/HuggingFaceAPIConfig.asset`.
-   > ⚠️ **Do not commit tokens.** Keep them out of version control, for example by loading them from a local file listed in `.gitignore`.
+   > **Do not commit tokens.** Keep them out of version control, for example by loading them from a local file listed in `.gitignore`.
 6. **Run in the Editor** with Quest Link, or **build an APK**: *File → Build Profiles → Android → Switch Platform → Build And Run* with the headset connected over USB.
 7. When the app first starts on the headset, allow the **eye‑tracking permission**.
 
