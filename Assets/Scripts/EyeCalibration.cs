@@ -514,4 +514,24 @@ public class EyeCalibration : MonoBehaviour
         if (blueCirclePrefab == null) Debug.LogError("[EyeCalibration] blueCirclePrefab is not assigned!");
         if (redRect == null) Debug.LogError("[EyeCalibration] redRect is not assigned!");
     }
+
+    // Show or hide all calibration circles (blue + red) without destroying
+    // state. Used to keep them hidden while the Start instruction screen is shown.
+    public void SetCalibrationVisible(bool visible)
+    {
+        // Blue circles: respect calibration progress — only the active one should
+        // reappear, matching EyeCalibration's own one-at-a-time logic.
+        if (blueObjects != null)
+        {
+            for (int i = 0; i < blueObjects.Length; i++)
+            {
+                if (blueObjects[i] == null) continue;
+                if (visible)
+                    blueObjects[i].SetActive(i == activeBlueIdx && !finished);
+                else
+                    blueObjects[i].SetActive(false);
+            }
+        }
+        if (redObject != null) redObject.SetActive(visible);
+    }
 }

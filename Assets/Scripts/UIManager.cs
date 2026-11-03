@@ -60,7 +60,8 @@ public class UIManager : MonoBehaviour
     public GameObject analysisText;
     public GameObject diagnosisText;
     public GameObject headCalibrationText;
-    public GameObject eyeCalibrationText;
+    public GameObject eyeCalibrationEndText;
+    public GameObject eyeCalibrationStartText;
 
     public GameObject eyeCalibrationCanvas;
     public GameObject headCalibrationCanvas;
@@ -94,6 +95,10 @@ public class UIManager : MonoBehaviour
     private float newZ = 1.5f;
 
     private bool eyeCalibrationFinish = false;
+    private bool isOnEyeCalibrationStartScreen = false;
+    private bool isOnEyeCalibrationEndScreen = false;
+
+    private bool firstImageDone = false;
 
 
     // -------------------------------------------------------
@@ -136,7 +141,8 @@ public class UIManager : MonoBehaviour
             diagnosisText.SetActive(false);
             analysisText.SetActive(false);
             headCalibrationText.SetActive(false);
-            eyeCalibrationText.SetActive(false);
+            eyeCalibrationEndText.SetActive(false);
+            eyeCalibrationStartText.SetActive(false);
         }
 
         gazeHeatmap?.SetVisible(false);
@@ -153,6 +159,41 @@ public class UIManager : MonoBehaviour
 
         bool rightPressed = Mouse.current.rightButton.wasPressedThisFrame;
         bool leftPressed = Mouse.current.leftButton.wasPressedThisFrame;
+
+        if (isOnEyeCalibrationStartScreen)
+        {
+            leftPressed = false;   // ignore left-click while the Start instruction is up
+            if (training)
+            {
+                analysisText.SetActive(false);
+                diagnosisText.SetActive(false);
+                headCalibrationText.SetActive(false);
+            }
+            if (rightPressed)
+            {
+                eyeCalibration?.SetCalibrationVisible(true);
+                isOnEyeCalibrationStartScreen = false;
+                eyeCalibrationStartText.SetActive(false);
+                eyeTrackingDisc?.SetActive(true);                       // start calibration/gaze
+                //gazeHeatmap?.SetVisible(true);
+                StartAnalysisTimer();
+            }
+            return;   // block all other screens while the intro is up
+        }
+
+        if (isOnEyeCalibrationEndScreen)
+        {
+            leftPressed = false;                     // ignore left-click while end text is up
+            if (rightPressed)
+            {
+                isOnEyeCalibrationEndScreen = false;
+                eyeCalibrationEndText.SetActive(false);
+                firstImageDone = true;               // from now on, analysis text is allowed
+                EndAnalysisTimer(false);
+                ShowNextImage();                     // advance to image 2 (distance calib + analysis)
+            }
+            return;                                  // block everything else while end text is up
+        }
 
         // Block right-click while eye calibration is still running
         if (eyeCalibration != null && !eyeCalibration.finished && eyeCalibration.imageRXRay.activeSelf)
@@ -209,40 +250,46 @@ public class UIManager : MonoBehaviour
         }
         else if (isOnRxRayScreen && !isOnEllipseScreen)
         {
-
-            if (training && !eyeCalibrationCanvas.activeSelf)
+            // Calibration just finished -> show end text and PAUSE (image 1 only).
+            if (training && eyeCalibration != null && eyeCalibration.finished && !eyeCalibrationFinish)
             {
-                if (headCalibrationCanvas.activeSelf)
+                eyeCalibrationFinish = true;
+                isOnEyeCalibrationEndScreen = true;
+                eyeCalibrationEndText.SetActive(true);
+                analysisText.SetActive(false);
+                headCalibrationText.SetActive(false);
+                return;
+            }
+
+            if (training)
+            {
+                // Analysis text only from image 2 onward (image 1 is the calibration image).
+                if (firstImageDone && !eyeCalibrationCanvas.activeSelf)
                 {
-                    headCalibrationText.SetActive(true);
-                    diagnosisText.SetActive(false);
-                    analysisText.SetActive(false);
+                    if (headCalibrationCanvas.activeSelf)
+                    {
+                        headCalibrationText.SetActive(true);
+                        analysisText.SetActive(false);
+                    }
+                    else
+                    {
+                        headCalibrationText.SetActive(false);
+                        analysisText.SetActive(true);
+                    }
                 }
                 else
                 {
+                    // Image 1 (calibration): no analysis/head text.
+                    analysisText.SetActive(false);
                     headCalibrationText.SetActive(false);
-                    diagnosisText.SetActive(false);
-                    analysisText.SetActive(true);
                 }
-            }
-            else if (training && eyeCalibrationCanvas.activeSelf)
-            {
-                headCalibrationText.SetActive(false);
                 diagnosisText.SetActive(false);
-                analysisText.SetActive(false);
-                if (eyeCalibration.finished == true && eyeCalibrationFinish == false)
-                {
-                    eyeCalibrationText.SetActive(true);
-                    eyeCalibrationFinish = true;
-                }
             }
+
             if (rightPressed)
             {
-                // Manual end of the analysis phase — unchanged behaviour:
-                // goes to the "analysis concluded" confirmation message.
                 EndAnalysisTimer(false);
                 ShowNextImage();
-                eyeCalibrationText.SetActive(false);
             }
         }
         else if (isOnPauseScreen)
@@ -252,7 +299,7 @@ public class UIManager : MonoBehaviour
                 headCalibrationText.SetActive(false);
                 diagnosisText.SetActive(false);
                 analysisText.SetActive(false);
-                eyeCalibrationText.SetActive(false);
+                eyeCalibrationEndText.SetActive(false);
             }
             if (rightPressed) StartCoroutine(ResumeFromPause());
         }
@@ -263,7 +310,7 @@ public class UIManager : MonoBehaviour
                 headCalibrationText.SetActive(false);
                 diagnosisText.SetActive(false);
                 analysisText.SetActive(false);
-                eyeCalibrationText.SetActive(false);
+                eyeCalibrationEndText.SetActive(false);
             }
             if (rightPressed) GoToNext();
         }
@@ -489,6 +536,7 @@ public class UIManager : MonoBehaviour
 
         Debug.Log($"RX-Ray: {shuffledImages.Count} images ready.");
         firstImageShown = false;
+        firstImageDone = false;
     }
 
     private void ShowNextImage()
@@ -783,17 +831,37 @@ public class UIManager : MonoBehaviour
         from.SetActive(false);
 
         to.SetActive(true);
-        CanvasGroup toCG = GetOrAddCanvasGroup(to);
-        toCG.alpha = 0f;
-        yield return StartCoroutine(Fade(toCG, 0f, 1f));
 
+        // prepare the start screen BEFORE the fade-in (without delay)
         if (enteringRxRay)
         {
             SetupRxRayImages();
+            if (training)
+            {
+                isOnEyeCalibrationStartScreen = true;
+                eyeCalibration?.SetCalibrationVisible(false);   // hidden circles
+                eyeCalibrationStartText.SetActive(true);        // texto linked  BEFORE the fade
+                eyeTrackingDisc?.SetActive(false);
+                gazeHeatmap?.SetVisible(false);
+                if (shuffledImages.Count > 0)
+                    shuffledImages[0].SetActive(false);         // imagem hidden back to the text
+            }
+        }
+
+        CanvasGroup toCG = GetOrAddCanvasGroup(to);
+        toCG.alpha = 0f;
+        yield return StartCoroutine(Fade(toCG, 0f, 1f));        // text does fade TOGETHER with the canvas
+
+        if (enteringRxRay)
+        {
             isOnRxRayScreen = true;
-            eyeTrackingDisc?.SetActive(true);
-            gazeHeatmap?.SetVisible(true);
             SetEllipsesLegend(false);
+
+            if (!training)       // in the normal flow, gaze/heatmap run
+            {
+                eyeTrackingDisc?.SetActive(true);
+                gazeHeatmap?.SetVisible(true);
+            }
 
             if (calibrationManager != null)
             {
@@ -802,9 +870,8 @@ public class UIManager : MonoBehaviour
                 calibrationManager.Recenter();
             }
 
-            // First image of the block. TickAnalysisTimer() holds the countdown at 2:00
-            // until eye-tracking calibration reports finished.
-            StartAnalysisTimer();
+            if (!training)       // timer just run in the normal flow
+                StartAnalysisTimer();
         }
 
         isTransitioning = false;
